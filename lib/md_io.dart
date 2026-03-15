@@ -7,7 +7,8 @@ String readSection(String content, String header) {
     r'## ' + RegExp.escape(header) + r'\n+([\s\S]*?)(?=\n## |\s*$)',
   );
   final match = pattern.firstMatch(content);
-  return match?.group(1)?.trim() ?? '_Not yet determined._';
+  final raw = match?.group(1) ?? '_Not yet determined._';
+  return raw.replaceAll(RegExp(r'\n*-{3,}\n*$'), '').trim();
 }
 
 /// Replaces the content of a section in markdown, preserving surrounding sections.
