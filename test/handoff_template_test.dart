@@ -8,7 +8,12 @@ void main() {
       date: '2026-03-15',
       bug: 'Audio stuck on last frame',
       expected: 'Audio plays continuously',
+      projectName: 'my-app',
     );
+
+    test('includes project name in title', () {
+      expect(result, contains('Agent Handoff — my-app'));
+    });
 
     test('includes branch and date', () {
       expect(result, contains('Branch: fix/audio'));
@@ -34,6 +39,7 @@ void main() {
         date: '2026-01-01',
         bug: 'bug',
         expected: 'expected',
+        projectName: 'my-app',
         files: 'audio_bloc.dart',
         blocs: 'AudioBloc',
       );

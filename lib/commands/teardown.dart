@@ -140,14 +140,14 @@ void _archiveHandoff(String content, String branch) {
   writeFile(p.join(archiveDir, name), content);
 }
 
-String _defaultSkillsTemplate() => '''# dc-flutter / media_ivi — Accumulated Skills
+String _defaultSkillsTemplate() => '''# Accumulated Skills
 
 > Updated by `claudart teardown` after each resolved session.
 > Read by `/suggest` and `/debug` at the start of every session.
 
 ---
 
-## Hot Paths — media_ivi
+## Hot Paths
 
 _No sessions recorded yet._
 

@@ -87,7 +87,7 @@ content
   });
 
   group('incrementHotPath', () {
-    const blankSkills = '''## Hot Paths — media_ivi
+    const blankSkills = '''## Hot Paths
 
 _No sessions recorded yet._
 ''';
@@ -131,8 +131,8 @@ _No sessions recorded yet._
       expect(areaFromCategory('bridge-call'), 'ffi');
     });
 
-    test('unknown falls back to media_ivi', () {
-      expect(areaFromCategory('something-else'), 'media_ivi');
+    test('unknown falls back to general', () {
+      expect(areaFromCategory('something-else'), 'general');
     });
   });
 
