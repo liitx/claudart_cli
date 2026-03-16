@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:test/test.dart';
-import 'package:claudart_cli/md_io.dart';
+import 'package:claudart/md_io.dart';
 import 'helpers/mocks.dart';
 
 void main() {

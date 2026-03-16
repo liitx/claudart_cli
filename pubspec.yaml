@@ -1,4 +1,4 @@
-name: claudart_cli
+name: claudart
 description: A Dart CLI for managing structured debug and suggestion sessions via local markdown workspaces. Works with any editor that supports slash commands.
 version: 1.0.0
 repository: https://github.com/liitx/claudart_cli
