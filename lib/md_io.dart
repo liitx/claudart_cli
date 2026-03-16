@@ -1,0 +1,64 @@
+import 'dart:io';
+
+/// Reads a section from a markdown file between `## Header` and the next `## `.
+/// Returns the trimmed content, or `_Not yet determined._` if not found.
+String readSection(String content, String header) {
+  final pattern = RegExp(
+    r'## ' + RegExp.escape(header) + r'\n+([\s\S]*?)(?=\n## |\s*$)',
+  );
+  final match = pattern.firstMatch(content);
+  return match?.group(1)?.trim() ?? '_Not yet determined._';
+}
+
+/// Replaces the content of a section in markdown, preserving surrounding sections.
+String updateSection(String content, String header, String newContent) {
+  final pattern = RegExp(
+    r'(## ' + RegExp.escape(header) + r'\n+)([\s\S]*?)(?=\n## |\s*$)',
+  );
+  if (pattern.hasMatch(content)) {
+    return content.replaceFirstMapped(pattern, (m) => '${m.group(1)}$newContent\n');
+  }
+  // Section not found — append it
+  return '$content\n## $header\n\n$newContent\n';
+}
+
+/// Reads the Status line value from the handoff.
+String readStatus(String content) {
+  final match = RegExp(r'## Status\n+(\S[^\n]*)').firstMatch(content);
+  return match?.group(1)?.trim() ?? 'unknown';
+}
+
+/// Updates the Status line in the handoff.
+String updateStatus(String content, String status) {
+  return content.replaceFirstMapped(
+    RegExp(r'(## Status\n+)(\S[^\n]*)'),
+    (m) => '${m.group(1)}$status',
+  );
+}
+
+String readFile(String path) {
+  final file = File(path);
+  return file.existsSync() ? file.readAsStringSync() : '';
+}
+
+void writeFile(String path, String content) {
+  File(path).writeAsStringSync(content);
+}
+
+/// Prompts the user with a question and returns trimmed input.
+/// If [optional] is true, empty input returns null.
+String? prompt(String question, {bool optional = false}) {
+  stdout.write('\n$question');
+  if (optional) stdout.write(' (press enter to skip)');
+  stdout.write('\n> ');
+  final input = stdin.readLineSync()?.trim();
+  if (input == null || input.isEmpty) return optional ? null : prompt(question);
+  return input;
+}
+
+/// Prompts yes/no. Returns true for yes.
+bool confirm(String question) {
+  stdout.write('\n$question [y/n] > ');
+  final input = stdin.readLineSync()?.trim().toLowerCase();
+  return input == 'y' || input == 'yes';
+}

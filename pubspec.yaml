@@ -1,0 +1,16 @@
+name: ivi_claude
+description: CLI entry point for the dc-flutter IVI debug/suggest workflow.
+version: 1.0.0
+
+environment:
+  sdk: ^3.0.0
+
+executables:
+  ivi: ivi
+
+dependencies:
+  args: ^2.5.0
+  path: ^1.8.0
+
+dev_dependencies:
+  lints: ^4.0.0
