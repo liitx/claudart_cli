@@ -72,11 +72,13 @@ Future<void> runSetup({String projectPath = '.'}) async {
 
   // Write handoff
   final date = DateTime.now().toIso8601String().split('T').first;
+  final projectName = _detectProjectName(resolvedPath);
   final content = handoffTemplate(
     branch: branch,
     date: date,
     bug: bug!,
     expected: expected!,
+    projectName: projectName,
     files: files,
     blocs: blocs,
   );
@@ -86,6 +88,18 @@ Future<void> runSetup({String projectPath = '.'}) async {
   print('\nNext step:');
   print('  Open your editor and run /suggest to begin exploration.');
   print('  Or run /debug if you already know the root cause.\n');
+}
+
+String _detectProjectName(String projectPath) {
+  try {
+    final result = Process.runSync('git', ['remote', 'get-url', 'origin'], workingDirectory: projectPath);
+    final url = (result.stdout as String).trim();
+    if (url.isNotEmpty) {
+      final name = url.split('/').last.replaceAll('.git', '').trim();
+      if (name.isNotEmpty) return name;
+    }
+  } catch (_) {}
+  return p.basename(projectPath);
 }
 
 Future<String> _detectBranch(String projectPath) async {

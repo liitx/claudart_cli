@@ -3,13 +3,14 @@ String handoffTemplate({
   required String date,
   required String bug,
   required String expected,
+  required String projectName,
   String? files,
   String? blocs,
 }) {
   final filesSection = files ?? '_Not yet determined._';
   final blocsSection = blocs ?? '_Not yet determined._';
 
-  return '''# Agent Handoff — dc-flutter / media_ivi
+  return '''# Agent Handoff — $projectName
 
 > Session started: $date | Branch: $branch
 > Source of truth between suggest and debug agents.
@@ -85,7 +86,7 @@ _Nothing yet._
 ''';
 }
 
-const String blankHandoff = '''# Agent Handoff — dc-flutter / media_ivi
+const String blankHandoff = '''# Agent Handoff
 
 > Source of truth between suggest and debug agents.
 > Run `claudart setup` to begin a new session.

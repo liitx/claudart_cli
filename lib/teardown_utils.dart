@@ -40,7 +40,7 @@ String incrementHotPath(String skills, String area, String file) {
     });
   }
   final entry = '- `$file` ↑  [$area]';
-  return appendToSection(skills, 'Hot Paths — media_ivi', entry);
+  return appendToSection(skills, 'Hot Paths', entry);
 }
 
 String areaFromCategory(String category) {
@@ -49,7 +49,7 @@ String areaFromCategory(String category) {
   if (category.contains('api') || category.contains('repository')) return 'api';
   if (category.contains('widget') || category.contains('ui')) return 'ui';
   if (category.contains('ffi') || category.contains('bridge')) return 'ffi';
-  return 'media_ivi';
+  return 'general';
 }
 
 String buildCommitMessage(String area, String bug, String rootCause, String fix) {
