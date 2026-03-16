@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:claudart_cli/knowledge_templates.dart';
+import 'package:claudart/knowledge_templates.dart';
 
 void main() {
   group('dartFlutterTemplate', () {

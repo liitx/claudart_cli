@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:mocktail/mocktail.dart';
-import 'package:claudart_cli/file_io.dart';
-import 'package:claudart_cli/process_runner.dart';
+import 'package:claudart/file_io.dart';
+import 'package:claudart/process_runner.dart';
 
 /// Mock file system — use [files] to pre-seed content,
 /// inspect it after the call under test.

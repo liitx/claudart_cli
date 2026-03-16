@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:claudart_cli/handoff_template.dart';
+import 'package:claudart/handoff_template.dart';
 
 void main() {
   group('handoffTemplate', () {

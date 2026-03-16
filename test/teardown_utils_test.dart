@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:claudart_cli/teardown_utils.dart';
+import 'package:claudart/teardown_utils.dart';
 
 void main() {
   group('extractBranch', () {
