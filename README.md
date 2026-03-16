@@ -21,15 +21,30 @@ Your workspace is where the local, project-specific md files live — handoff, s
 
 ---
 
+## Dependency chain
+
+```
+ivi (global command)
+  └── activated from <path-to-claudart_cli>
+        └── reads/writes $CLAUDART_WORKSPACE/
+```
+
+`ivi` works because of two things. If either is missing it will break:
+
+1. **Global activation** — `claudart_cli` must be activated via `dart pub global activate`
+2. **`CLAUDART_WORKSPACE`** — must be set in your shell profile pointing to your workspace directory
+
+---
+
 ## Install
 
 Requires Dart SDK `^3.0.0`.
 
 ```bash
-git clone https://github.com/liitx/claudart_cli ~/dev/apps/claudart_cli
-cd ~/dev/apps/claudart_cli
+git clone https://github.com/liitx/claudart_cli <your-local-path>
+cd <your-local-path>
 dart pub get
-dart pub global activate --source path ~/dev/apps/claudart_cli
+dart pub global activate --source path <your-local-path>
 ```
 
 ---
@@ -41,10 +56,10 @@ Defaults to `~/.claudart/` if not set.
 
 ```bash
 # In your ~/.zshrc or ~/.bashrc
-export CLAUDART_WORKSPACE=~/dev/dev_tools/claude
+export CLAUDART_WORKSPACE=~/your/workspace/path
 ```
 
-The workspace directory is created automatically on first use.
+The workspace directory and its subdirectories are created automatically on first use.
 
 ---
 
@@ -87,30 +102,38 @@ Confirms the bug is resolved, prompts you to categorize the session, then:
 ## File layout
 
 ```
-~/dev/apps/claudart_cli/    ← the package (generic, no project paths)
-  bin/ivi.dart
+<your-local-path>/          ← the package (generic, no project paths)
+  bin/ivi.dart              ← CLI entry point
   lib/
     commands/
+      setup.dart
+      status.dart
+      teardown.dart
+    handoff_template.dart
+    md_io.dart
     paths.dart              ← resolves workspace from CLAUDART_WORKSPACE
-    ...
 
-$CLAUDART_WORKSPACE/        ← your local workspace (e.g. ~/dev/dev_tools/claude)
+$CLAUDART_WORKSPACE/        ← your local workspace
   handoff.md                ← active session state (suggest ↔ debug bridge)
   skills.md                 ← accumulated learnings across sessions
-  archive/                  ← past handoffs, gitignored
+  archive/                  ← past handoffs (auto-created, keep gitignored)
 ```
 
 ---
 
 ## Claude Code integration
 
-The Claude commands (`/suggest`, `/debug`, `/teardown`) live in your project repo under `.claude/commands/`. They read from `$CLAUDART_WORKSPACE/handoff.md` and `skills.md`.
+The Claude commands (`/suggest`, `/debug`, `/teardown`) live in your project repo under `.claude/commands/`. They read from `$CLAUDART_WORKSPACE/handoff.md` and `skills.md` at the start of every session.
+
+> **Important:** `.claude/` and `CLAUDE.md` are local Claude Code config — never commit them to your project repo. Add them to your project's `.gitignore`.
+
+A global `/ivi` fallback command can be placed at `~/.claude/commands/ivi.md` for use if the CLI hasn't been run yet in a session.
 
 ### Workflow in practice
 
 ```bash
 # 1. Start session from your project root
-cd ~/dev/apps/dc-flutter
+cd <your-project>
 ivi setup
 
 # 2. In Claude Code — explore the problem
@@ -138,9 +161,11 @@ ivi teardown
 
 ## Adapting to other projects
 
-1. Set `CLAUDART_WORKSPACE` to a directory for that project's session files
-2. Add `.claude/commands/suggest.md`, `debug.md`, `teardown.md` to the project, pointing to `$CLAUDART_WORKSPACE`
-3. Run `ivi setup` from the project root
+1. Clone `claudart_cli` and activate it globally
+2. Set `CLAUDART_WORKSPACE` in your shell profile for that project's session files
+3. Add `.claude/commands/suggest.md`, `debug.md`, `teardown.md` to the project, pointing to `$CLAUDART_WORKSPACE`
+4. Add `.claude/` and `CLAUDE.md` to the project's `.gitignore`
+5. Run `ivi setup` from the project root
 
 ---
 
