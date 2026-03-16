@@ -14,7 +14,7 @@ String handoffTemplate({
 
 > Session started: $date | Branch: $branch
 > Source of truth between suggest and debug agents.
-> Managed by: claudart (https://github.com/liitx/claudart_cli)
+> Managed by: claudart (https://github.com/liitx/claudart)
 
 ---
 
