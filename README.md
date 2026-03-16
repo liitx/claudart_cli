@@ -1,24 +1,23 @@
 # claudart_cli
 
-A Dart CLI that bootstraps and manages the suggest/debug agent workflow for Flutter development with Claude Code.
+A generic Dart CLI that manages the suggest/debug agent workflow for Claude Code.
 
-Designed for use with [dc-flutter](https://github.com/liitx) — a Flutter monorepo for automotive IVI/IC — but generic enough to adapt to any project.
+`claudart_cli` is a **package** — it has no opinions about your project structure. You point it at a local workspace directory where your session files live. That workspace is yours to configure per project.
 
 ---
 
-## What it does
-
-Claude Code works best when the exploration agent and the fix agent are kept separate. This CLI manages the handoff between them via a shared markdown file (`handoff.md`) that acts as the source of truth for each session.
+## Concept
 
 ```
-ivi setup   →  /suggest (explore, build KT)  →  writes handoff.md
-                                                        ↓
-ivi teardown  ←  /debug (scoped fix)         ←  reads handoff.md
-     ↓
-updates skills.md with generic patterns for future sessions
+claudart_cli (generic package)
+      ↕  reads/writes
+$CLAUDART_WORKSPACE/   ← your local workspace (project-specific overrides)
+  handoff.md           ← active session state
+  skills.md            ← accumulated learnings
+  archive/             ← past sessions
 ```
 
-The skills file grows smarter over time — hot paths, root cause patterns, and anti-patterns accumulate so each new session starts with better context.
+Your workspace is where the local, project-specific md files live — handoff, skills, any overrides. The CLI doesn't care what project you're in; it just manages those files.
 
 ---
 
@@ -27,11 +26,25 @@ The skills file grows smarter over time — hot paths, root cause patterns, and 
 Requires Dart SDK `^3.0.0`.
 
 ```bash
-git clone https://github.com/liitx/claudart_cli ~/dev/dev_tools/claude
-cd ~/dev/dev_tools/claude
+git clone https://github.com/liitx/claudart_cli ~/dev/apps/claudart_cli
+cd ~/dev/apps/claudart_cli
 dart pub get
-dart pub global activate --source path ~/dev/dev_tools/claude
+dart pub global activate --source path ~/dev/apps/claudart_cli
 ```
+
+---
+
+## Configure your workspace
+
+Set `CLAUDART_WORKSPACE` to wherever your local session files should live.
+Defaults to `~/.claudart/` if not set.
+
+```bash
+# In your ~/.zshrc or ~/.bashrc
+export CLAUDART_WORKSPACE=~/dev/dev_tools/claude
+```
+
+The workspace directory is created automatically on first use.
 
 ---
 
@@ -54,7 +67,7 @@ Detects your current git branch, reads accumulated skills, then prompts:
 3. Any files already in mind? *(optional)*
 4. Any BLoC events, provider names, or API calls involved? *(optional)*
 
-Writes a structured `handoff.md` ready for `/suggest` or `/debug`.
+Writes a structured `handoff.md` to your workspace, ready for `/suggest` or `/debug`.
 
 ### status
 
@@ -74,27 +87,24 @@ Confirms the bug is resolved, prompts you to categorize the session, then:
 ## File layout
 
 ```
-~/dev/dev_tools/claude/
-  bin/ivi.dart                  ← CLI entry point
+~/dev/apps/claudart_cli/    ← the package (generic, no project paths)
+  bin/ivi.dart
   lib/
-    commands/setup.dart
-    commands/status.dart
-    commands/teardown.dart
-    handoff_template.dart
-    md_io.dart
-    paths.dart
-  handoff.md                    ← active session state (suggest ↔ debug bridge)
-  skills.md                     ← accumulated learnings across sessions
-  archive/                      ← past handoffs, one per session (gitignored)
+    commands/
+    paths.dart              ← resolves workspace from CLAUDART_WORKSPACE
+    ...
+
+$CLAUDART_WORKSPACE/        ← your local workspace (e.g. ~/dev/dev_tools/claude)
+  handoff.md                ← active session state (suggest ↔ debug bridge)
+  skills.md                 ← accumulated learnings across sessions
+  archive/                  ← past handoffs, gitignored
 ```
 
 ---
 
 ## Claude Code integration
 
-The Claude commands (`/suggest`, `/debug`, `/teardown`) live in the project repo under `.claude/commands/`. They read `~/dev/dev_tools/claude/handoff.md` and `skills.md` at the start of every session.
-
-The global `/ivi` command lives in `~/.claude/commands/ivi.md` and serves as a fallback if the CLI hasn't been run yet.
+The Claude commands (`/suggest`, `/debug`, `/teardown`) live in your project repo under `.claude/commands/`. They read from `$CLAUDART_WORKSPACE/handoff.md` and `skills.md`.
 
 ### Workflow in practice
 
@@ -128,11 +138,9 @@ ivi teardown
 
 ## Adapting to other projects
 
-The CLI is project-agnostic. To use it with a different codebase:
-
-1. Update the Claude commands in your project's `.claude/commands/` to reference `~/dev/dev_tools/claude/handoff.md` and `skills.md`
-2. Scope the `/suggest` command to your relevant package/directory
-3. Run `ivi setup` from your project root as usual
+1. Set `CLAUDART_WORKSPACE` to a directory for that project's session files
+2. Add `.claude/commands/suggest.md`, `debug.md`, `teardown.md` to the project, pointing to `$CLAUDART_WORKSPACE`
+3. Run `ivi setup` from the project root
 
 ---
 

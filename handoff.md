@@ -1,7 +1,8 @@
 # Agent Handoff — dc-flutter / media_ivi
 
+> Session started: 2026-03-15 | Branch: main
 > Source of truth between suggest and debug agents.
-> Run `dart run ~/dev/dev_tools/claude/bin/ivi.dart setup` to begin a new session.
+> Managed by: ~/dev/dev_tools/claude/bin/ivi.dart
 
 ---
 
@@ -13,13 +14,13 @@ suggest-investigating
 
 ## Bug
 
-_Not yet determined._
+Media playback state not updating in UI after track change event fires
 
 ---
 
 ## Expected Behavior
 
-_Not yet determined._
+UI should reflect new track title and playback position immediately after MediaPlaybackEvent
 
 ---
 
@@ -32,10 +33,10 @@ _Not yet determined._
 ## Scope
 
 ### Files in play
-_Not yet determined._
+media_bloc.dart, playback_repository.dart
 
 ### BLoCs / providers in play
-_Not yet determined._
+MediaPlaybackEvent, PlaybackState
 
 ### Classes / methods in play
 _Not yet determined._
