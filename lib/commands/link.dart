@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import '../md_io.dart';
 import '../paths.dart';
 import '../knowledge_templates.dart';
+import '../pubspec_utils.dart';
 
 Future<void> runLink(List<String> args) async {
   final projectName = args.isNotEmpty ? args.first : _detectProjectName();
@@ -34,7 +35,7 @@ Future<void> runLink(List<String> args) async {
   _checkExisting(claudeMdLinkPath, 'CLAUDE.md');
 
   // Read project SDK constraints from its pubspec.yaml
-  final env = _readProjectEnv(cwd);
+  final env = readProjectEnv(cwd);
   if (env.sdk != null) {
     print('\n📦 Detected SDK constraint: ${env.sdk}');
   }
@@ -97,25 +98,3 @@ String _detectProjectName() {
   return p.basename(Directory.current.path);
 }
 
-({String? sdk, String? flutter}) _readProjectEnv(String projectDir) {
-  final pubspec = File(p.join(projectDir, 'pubspec.yaml'));
-  if (!pubspec.existsSync()) return (sdk: null, flutter: null);
-
-  final content = pubspec.readAsStringSync();
-
-  // Extract environment block, then pull sdk/flutter lines from it
-  final envBlock = RegExp(
-    r'^environment\s*:\s*\n((?:[ \t]+\S[^\n]*\n?)+)',
-    multiLine: true,
-  ).firstMatch(content)?.group(1) ?? '';
-
-  String? extract(String key) {
-    final m = RegExp(
-      r'''^\s*''' + key + r'''\s*:\s*['"]?([^'"\n]+?)['"]?\s*$''',
-      multiLine: true,
-    ).firstMatch(envBlock);
-    return m?.group(1)?.trim();
-  }
-
-  return (sdk: extract('sdk'), flutter: extract('flutter'));
-}
