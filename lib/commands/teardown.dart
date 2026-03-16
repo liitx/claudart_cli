@@ -7,7 +7,7 @@ import '../teardown_utils.dart';
 
 Future<void> runTeardown() async {
   print('\n═══════════════════════════════════════');
-  print('  IVI SESSION TEARDOWN');
+  print('  CLAUDART SESSION TEARDOWN');
   print('═══════════════════════════════════════');
 
   final handoff = readFile(handoffPath);

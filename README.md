@@ -2,7 +2,7 @@
 
 A Dart CLI for managing structured debug and suggestion sessions during software development.
 
-`claudart_cli` is a **Dart package** — not a Claude product. It manages session state and accumulated knowledge via local markdown files that coordinate between a suggestion agent and a debug agent in your editor. It has no opinions about your project structure.
+`claudart` is a **Dart package** — not a Claude product. It manages session state and accumulated knowledge via local markdown files that coordinate between a suggestion agent and a debug agent in your editor. It has no opinions about your project structure.
 
 ---
 
@@ -19,7 +19,7 @@ $CLAUDART_WORKSPACE/
       riverpod.md         ← Riverpod patterns
       testing.md          ← testing patterns
     projects/
-      dc-flutter.md       ← dc-flutter specific context and patterns
+      my-project.md       ← project-specific context and patterns
       my-other-app.md     ← another project's knowledge
   handoff.md              ← current session state (reset each session)
   skills.md               ← cross-session index
@@ -41,7 +41,7 @@ The workspace grows smarter with every session across every project. You never r
 Terminal                            Claude Code session (editor)
 ──────────────────────────────────  ────────────────────────────────────
 claudart init                       (one-time workspace setup)
-claudart init --project dc-flutter  (one-time per project)
+claudart init --project my-project  (one-time per project)
 claudart link                       (symlinks workspace into project)
 
 claudart setup                      (writes handoff.md)
@@ -66,7 +66,7 @@ claudart unlink                     (removes symlinks from project)
 
 ```
 claudart (global terminal command)
-  └── activated from <path-to-claudart_cli>
+  └── activated from <path-to-claudart>
         └── reads/writes $CLAUDART_WORKSPACE/
 
 /suggest, /debug  (Claude Code slash commands)
@@ -86,7 +86,7 @@ claudart (global terminal command)
 Requires Dart SDK `>=3.0.0`.
 
 ```bash
-git clone https://github.com/liitx/claudart_cli <your-local-path>
+git clone https://github.com/liitx/claudart <your-local-path>
 cd <your-local-path>
 dart pub get
 dart compile exe bin/claudart.dart -o ~/bin/claudart
@@ -139,7 +139,7 @@ This is the recommended entry point for starting any session.
 claudart init
 
 # Register a project
-claudart init --project dc-flutter
+claudart init --project my-project
 ```
 
 `init` only needs to run once per workspace and once per project. After that the knowledge files persist and grow automatically.
