@@ -117,7 +117,7 @@ void _printSessionSummary(String name, SessionState state) {
   print('\n───────────────────────────────────────');
   print('  Session: $name');
   print('  Branch : ${state.branch}');
-  print('  Status : ${state.status}');
+  print('  Status : ${state.status.value}');
   print('  Bug    : ${_truncate(state.bug)}');
   if (state.hasActiveContent) {
     print('\n  Debug progress recorded — this work will be archived.');
