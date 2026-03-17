@@ -1,33 +1,75 @@
-import '../md_io.dart';
+import 'dart:io';
+import '../file_io.dart';
+import '../git_utils.dart';
 import '../paths.dart';
+import '../registry.dart';
+import '../session/session_state.dart';
+import '../teardown_utils.dart';
 
-void runStatus() {
-  final content = readFile(handoffPath);
+Future<void> runStatus({
+  FileIO? io,
+  String? projectRootOverride,
+  Never Function(int code)? exitFn,
+}) async {
+  final fileIO = io ?? const RealFileIO();
+  final exit_ = exitFn ?? exit;
+
+  final gitCtx = projectRootOverride != null ? null : detectGitContext();
+  final projectRoot = projectRootOverride ?? gitCtx?.root;
+  final currentBranch = gitCtx?.branch;
+
+  if (projectRoot == null) {
+    print('✗ Not inside a git repository. Cannot detect project.');
+    exit_(1);
+  }
+
+  final registry = Registry.load(io: fileIO);
+  final entry = registry.findByProjectRoot(projectRoot);
+  if (entry == null) {
+    print('✗ No claudart session found for this project.');
+    print('  Run `claudart link` to register it.');
+    exit_(1);
+  }
+
+  final workspace = entry.workspacePath;
+  final handoffFile = handoffPathFor(workspace);
+  final content =
+      fileIO.fileExists(handoffFile) ? fileIO.read(handoffFile) : '';
+
   if (content.isEmpty) {
     print('\nNo active handoff. Run: claudart setup\n');
     return;
   }
 
-  final status = readStatus(content);
-  final bug = readSection(content, 'Bug');
-  final rootCause = readSection(content, 'Root Cause');
-  final unresolved = _readSubSection(content, 'Debug Progress', 'What is still unresolved');
+  final state = SessionState.parse(content);
+  final unresolved =
+      readSubSection(extractSection(content, 'Debug Progress'),
+          'What is still unresolved');
 
   print('\n═══════════════════════════════════════');
   print('  CLAUDART SESSION STATUS');
   print('═══════════════════════════════════════');
-  print('Status   : $status');
-  print('Bug      : ${_truncate(bug)}');
-  print('Root cause: ${_truncate(rootCause)}');
-  if (status == 'debug-in-progress' || status == 'needs-suggest') {
+  print('Project  : ${entry.name}');
+  print('Branch   : ${state.branch}');
+  print('Status   : ${state.status}');
+  print('Bug      : ${_truncate(state.bug)}');
+  print('Root cause: ${_truncate(state.rootCause)}');
+  if (state.status == 'debug-in-progress' || state.status == 'needs-suggest') {
     print('Unresolved: ${_truncate(unresolved)}');
   }
+
+  if (currentBranch != null &&
+      state.branch != 'unknown' &&
+      currentBranch != state.branch) {
+    print('\n⚠  Current branch "$currentBranch" differs from handoff branch "${state.branch}".');
+  }
+
   print('');
-  print('Handoff  : $handoffPath');
-  print('Skills   : $skillsPath');
+  print('Handoff  : $handoffFile');
+  print('Skills   : ${skillsPathFor(workspace)}');
 
   print('\nNext step:');
-  switch (status) {
+  switch (state.status) {
     case 'suggest-investigating':
       print('  Run /suggest in your editor.');
     case 'ready-for-debug':
@@ -45,19 +87,4 @@ void runStatus() {
 String _truncate(String s, {int max = 80}) {
   final single = s.replaceAll('\n', ' ').trim();
   return single.length > max ? '${single.substring(0, max)}…' : single;
-}
-
-String _readSubSection(String content, String section, String subheader) {
-  final sectionContent = _extractSection(content, section);
-  final match = RegExp(
-    r'### ' + RegExp.escape(subheader) + r'\n+([\s\S]*?)(?=\n### |\s*$)',
-  ).firstMatch(sectionContent);
-  return match?.group(1)?.trim() ?? '_Nothing yet._';
-}
-
-String _extractSection(String content, String header) {
-  final match = RegExp(
-    r'## ' + RegExp.escape(header) + r'\n+([\s\S]*?)(?=\n## |\s*$)',
-  ).firstMatch(content);
-  return match?.group(1)?.trim() ?? '';
 }
