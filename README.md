@@ -1,8 +1,8 @@
 # claudart
 
-A Dart CLI that gives your AI coding sessions **memory, structure, and privacy**.
+A Dart CLI that gives your Claude Code sessions **memory, structure, and privacy**.
 
-> Not a Claude product. Works with any editor that supports slash commands.
+> Not an Anthropic product. Built for Claude Code + Dart/Flutter projects.
 
 ---
 
@@ -10,7 +10,7 @@ A Dart CLI that gives your AI coding sessions **memory, structure, and privacy**
 
 You're debugging a tricky bug. You open Claude Code, type `/suggest`, and it already knows your project's patterns, past mistakes, and what files to avoid. When it finds the root cause, `/save` locks the confirmed state — then `/debug` picks up exactly where `/suggest` left off. When you're done, `claudart teardown` files the learnings so next time is smarter.
 
-**That's claudart** — a local CLI that coordinates a structured, stateful AI workflow across sessions.
+**That's claudart** — a local CLI that coordinates a structured, stateful Claude Code workflow across sessions.
 
 ```
 claudart setup  →  /suggest  →  /save  →  /debug  →  claudart teardown
@@ -139,7 +139,7 @@ Every command that reads the handoff checks whether your current git branch matc
 
 ## Token efficiency
 
-Unstructured AI sessions are expensive. Every time you start fresh, the model re-reads dozens of files to rebuild context it already had. claudart eliminates that.
+Unstructured Claude Code sessions are expensive. Every time you start fresh, the model re-reads dozens of files to rebuild context it already had. claudart eliminates that.
 
 | Approach | Files read per session | Context reused |
 |---|---|---|
