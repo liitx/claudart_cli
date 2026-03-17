@@ -5,6 +5,20 @@ Your job is to understand the problem deeply, then hand off confident KT to the 
 
 ---
 
+## Step 0 — Preflight sync check
+
+Before doing anything else, run:
+
+```
+claudart preflight test
+```
+
+- If errors: stop and tell the user what must be resolved.
+- If warnings: note them, then proceed — warnings do not block exploration.
+- If clean: proceed silently.
+
+---
+
 ## Step 1 — Read context files first
 
 Read all of the following before doing anything else:
@@ -54,7 +68,11 @@ Only when all five are answered with confidence:
 
 1. Update `$workspacePath/handoff.md` — fill Bug, Expected Behavior, Root Cause, Scope, Constraints
 2. Set status to `ready-for-debug`
-3. Tell the user: "KT is written. Run `/debug` to continue."
+3. Tell the user:
+   > "KT is written. Run `/save` to checkpoint the confirmed root cause, then `/debug` to implement the fix."
+
+Do not tell the user to run `/debug` directly — `/save` is the required handshake
+that locks the confirmed state before debug begins.
 
 ---
 

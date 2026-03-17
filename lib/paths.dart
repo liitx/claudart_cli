@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 
-/// Workspace directory — where all session files and knowledge live.
+/// Root directory containing all project workspaces.
 /// Resolved from CLAUDART_WORKSPACE env var, falls back to ~/.claudart/
-final String claudeDir = () {
+final String workspacesRoot = () {
   final env = Platform.environment['CLAUDART_WORKSPACE'];
   if (env != null && env.isNotEmpty) {
     if (env.startsWith('~/')) {
@@ -14,16 +14,38 @@ final String claudeDir = () {
   return p.join(Platform.environment['HOME']!, '.claudart');
 }();
 
-// Session state
-final String handoffPath = p.join(claudeDir, 'handoff.md');
-final String skillsPath  = p.join(claudeDir, 'skills.md');
-final String archiveDir  = p.join(claudeDir, 'archive');
+/// Registry of all known project workspaces.
+String get registryPath => p.join(workspacesRoot, 'registry.json');
 
-// Knowledge base
-final String knowledgeDir        = p.join(claudeDir, 'knowledge');
-final String genericKnowledgeDir = p.join(knowledgeDir, 'generic');
-final String projectsKnowledgeDir = p.join(knowledgeDir, 'projects');
+/// Returns the workspace directory for a named project.
+String workspaceFor(String projectName) => p.join(workspacesRoot, projectName);
 
-// Claude Code config (symlinked into projects at link time)
-final String claudeCommandsDir = p.join(claudeDir, '.claude', 'commands');
-final String claudeMdPath      = p.join(claudeDir, 'CLAUDE.md');
+// ── Per-workspace path functions (new API) ─────────────────────────────────
+// All take a resolved workspace path. Use with workspaceFor(name).
+
+String handoffPathFor(String ws) => p.join(ws, 'handoff.md');
+String skillsPathFor(String ws) => p.join(ws, 'skills.md');
+String archiveDirFor(String ws) => p.join(ws, 'archive');
+String configPathFor(String ws) => p.join(ws, 'config.json');
+String knowledgeDirFor(String ws) => p.join(ws, 'knowledge');
+String genericKnowledgeDirFor(String ws) => p.join(ws, 'knowledge', 'generic');
+String projectsKnowledgeDirFor(String ws) => p.join(ws, 'knowledge', 'projects');
+String claudeCommandsDirFor(String ws) => p.join(ws, '.claude', 'commands');
+String tokenMapPathFor(String ws) => p.join(ws, 'token_map.json');
+String logsDirFor(String ws) => p.join(ws, 'logs');
+
+// ── Legacy single-workspace paths ──────────────────────────────────────────
+// Kept for backward compatibility while commands migrate to workspaceFor().
+// TODO: remove once all callers use the per-workspace functions above.
+
+/// @deprecated Use workspacesRoot directly.
+String get claudeDir => workspacesRoot;
+
+String get handoffPath           => handoffPathFor(workspacesRoot);
+String get skillsPath            => skillsPathFor(workspacesRoot);
+String get archiveDir            => archiveDirFor(workspacesRoot);
+String get knowledgeDir          => knowledgeDirFor(workspacesRoot);
+String get genericKnowledgeDir   => genericKnowledgeDirFor(workspacesRoot);
+String get projectsKnowledgeDir  => projectsKnowledgeDirFor(workspacesRoot);
+String get claudeCommandsDir     => claudeCommandsDirFor(workspacesRoot);
+String get claudeMdPath          => p.join(workspacesRoot, 'CLAUDE.md');

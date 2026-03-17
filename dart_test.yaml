@@ -1,0 +1,9 @@
+# claudart test configuration
+# Run tests with randomized ordering and workspace isolation:
+#   CLAUDART_WORKSPACE=/tmp/claudart_test dart test --test-randomize-ordering-seed=random
+# or use the /test Claude Code command which handles this automatically.
+# IMPORTANT: always set CLAUDART_WORKSPACE to a temp path — prevents any accidental
+# RealFileIO write from touching the real ~/.claudart/ workspace.
+
+timeout: 30s
+concurrency: 4
