@@ -1,6 +1,7 @@
 import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:claudart/commands/launch.dart';
+import 'package:claudart/commands/link.dart';
 import 'package:claudart/registry.dart';
 import 'package:claudart/paths.dart';
 import 'package:claudart/session/workspace_guard.dart';
@@ -262,6 +263,27 @@ void main() {
           .where((k) => k.startsWith(p.join(_workspace, 'archive')))
           .toList();
       expect(archived, isEmpty);
+    });
+  });
+
+  group('launch — register unregistered project', () {
+    test('routes to runLink with injected io when user picks Register', () async {
+      // Set up: cwd is an unregistered project (projectRootOverride differs from entry).
+      final io = _io();
+      final unregisteredRoot = '/projects/other-app';
+
+      // registerChoice(1) = 2 — 1 entry in registry + 1 for the Register option.
+      await runLauncher(
+        io: io,
+        projectRootOverride: unregisteredRoot,
+        pickFn: (_, max) => registerChoice(1),
+        confirmFn: (_) => false, // decline sensitivity mode prompt in runLink
+        exitFn: _throwExit,
+      );
+
+      // runLink should have written a registry entry for the new project.
+      final registry = Registry.load(io: io);
+      expect(registry.findByProjectRoot(unregisteredRoot), isNotNull);
     });
   });
 

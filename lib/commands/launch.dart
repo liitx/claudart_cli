@@ -94,8 +94,14 @@ Future<void> runLauncher({
   final maxChoice = entries.length + (canRegister ? 1 : 0);
   final choice = pick_('Select', maxChoice);
 
-  if (canRegister && choice == maxChoice) {
-    await runLink([]);
+  if (canRegister && choice == registerChoice(entries.length)) {
+    await runLink(
+      [],
+      io: fileIO,
+      projectRootOverride: projectRootOverride,
+      confirmFn: confirmFn,
+      exitFn: exitFn,
+    );
     return;
   }
 
@@ -169,6 +175,12 @@ Future<void> runLauncher({
     }
   }
 }
+
+/// Returns the menu choice number that maps to the Register action.
+///
+/// Exposed so tests can derive the correct pick index from registry size
+/// rather than hard-coding a magic number.
+int registerChoice(int entryCount) => entryCount + 1;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
