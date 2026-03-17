@@ -8,13 +8,15 @@ A Dart CLI that gives your AI coding sessions **memory, structure, and privacy**
 
 ## The short version
 
-You're debugging a tricky bug. You open Claude Code, type `/suggest`, and it already knows your project's patterns, past mistakes, and what files to avoid. When it finds the fix, `/debug` picks up exactly where `/suggest` left off. When you're done, `claudart teardown` files the learnings so next time is smarter.
+You're debugging a tricky bug. You open Claude Code, type `/suggest`, and it already knows your project's patterns, past mistakes, and what files to avoid. When it finds the root cause, `/save` locks the confirmed state — then `/debug` picks up exactly where `/suggest` left off. When you're done, `claudart teardown` files the learnings so next time is smarter.
 
 **That's claudart** — a local CLI that coordinates a structured, stateful AI workflow across sessions.
 
 ```
-claudart setup   →   /suggest   →   /debug   →   claudart teardown
+claudart setup  →  /suggest  →  /save  →  /debug  →  claudart teardown
 ```
+
+`/save` is the required handshake between `/suggest` and `/debug`. It checkpoints the confirmed root cause before debug begins — no guessing, no stale state.
 
 No cloud sync. No API keys. Everything lives in a local workspace on your machine.
 
@@ -41,18 +43,13 @@ dart compile exe bin/claudart.dart -o ~/bin/claudart
 
 # 2. Add ~/bin to PATH (if not already)
 echo 'export PATH=$HOME/bin:$PATH' >> ~/.zshrc
-
-# 3. Point claudart at a workspace folder
-echo 'export CLAUDART_WORKSPACE=~/dev/my-workspace' >> ~/.zshrc
 source ~/.zshrc
 
-# 4. Initialize workspace
-claudart init
-claudart init --project my-app
-
-# 5. Start a session
+# 3. Link a project
 cd ~/dev/my-app
-claudart link
+claudart link          # registers project, creates workspace, wires .claude symlink
+
+# 4. Start a session
 claudart setup
 # → then type /suggest inside Claude Code
 ```
@@ -68,17 +65,20 @@ dart compile exe ~/dev/claudart/bin/claudart.dart -o ~/bin/claudart
 
 ### The workspace
 
-Think of the workspace as a **shared brain** — a folder on your machine that multiple projects can reference. It holds everything Claude needs to be useful: past learnings, project patterns, session state.
+Each registered project gets its own **isolated workspace** — a folder managed by claudart at `~/.claudart/<project-name>/`. It holds everything Claude needs to be useful: past learnings, project patterns, session state.
 
 ```
-~/my-workspace/
-  knowledge/          ← what Claude reads before every session
-  handoff.md          ← the current bug being worked on
-  skills.md           ← what worked (and didn't) in past sessions
-  archive/            ← every past session, for reference
+~/.claudart/
+  registry.json           ← index of all registered projects
+  my-app/
+    handoff.md            ← current bug being worked on
+    skills.md             ← what worked (and didn't) in past sessions
+    archive/              ← every past session + checkpoints
+    knowledge/            ← what Claude reads before every session
+    .claude/commands/     ← slash command definitions (suggest, debug, save, teardown)
 ```
 
-It never lives inside a project. Projects just borrow it.
+Projects never contain workspace state. `claudart link` wires a `.claude` symlink from your project root into the workspace at session time.
 
 ### A session, step by step
 
@@ -89,21 +89,27 @@ It never lives inside a project. Projects just borrow it.
 2. /suggest  (inside Claude Code)
    Claude reads your knowledge base + handoff.
    Explores the codebase. Builds a theory.
-   Writes its findings back to handoff.md.
+   Writes its findings back to handoff.md. Sets status → ready-for-debug.
 
-3. /debug  (inside Claude Code)
-   Claude reads the updated handoff.
-   Implements a scoped fix.
-   Only touches what it said it would touch.
+3. /save  (inside Claude Code — required handshake)
+   Runs `claudart save` under the hood.
+   Checkpoints the handoff to archive/.
+   Deposits the confirmed root cause to skills.md → Pending.
+   Does NOT reset the session — work continues.
 
-4. claudart teardown
+4. /debug  (inside Claude Code)
+   Reads the checkpointed handoff. Runs preflight — refuses to start
+   if status is wrong or skills.md is out of sync.
+   Implements a scoped fix. Only touches what it said it would touch.
+
+5. claudart teardown
    You confirm the fix. Describe what changed.
    claudart extracts the learnings and adds them to skills.md.
    Archives the full session. Resets handoff for next time.
    Suggests a commit message.
 ```
 
-Every session makes the next one smarter.
+Every session makes the next one smarter. `/save` makes sure no confirmed knowledge is lost between steps.
 
 ### The handoff status machine
 
@@ -112,11 +118,15 @@ The session has a status that both `/suggest` and `/debug` respect:
 | Status | Meaning |
 |---|---|
 | `suggest-investigating` | `/suggest` is exploring |
-| `ready-for-debug` | `/suggest` is confident — `/debug` can start |
+| `ready-for-debug` | `/suggest` is confident — run `/save`, then `/debug` |
 | `debug-in-progress` | `/debug` is implementing |
 | `needs-suggest` | `/debug` hit a wall — hand back to `/suggest` |
 
-`/debug` refuses to start unless status is `ready-for-debug`. No guessing, no drift.
+`/debug` refuses to start unless status is `ready-for-debug` or `debug-in-progress`. `/save` is required between the two — it is the lock that prevents debug from working from stale state.
+
+### Branch awareness
+
+Every command that reads the handoff checks whether your current git branch matches the branch the session was started on. If you switch branches mid-session, claudart warns you before you save or debug against the wrong context. It never blocks — you can always proceed — but the warning is explicit.
 
 ---
 
@@ -129,6 +139,9 @@ The session has a status that both `/suggest` and `/debug` respect:
 | `claudart init --project name` | Register a new project |
 | `claudart link` | Wire workspace into current project via symlinks |
 | `claudart setup` | Start a session — writes handoff.md |
+| `claudart save` | Checkpoint session — snapshot handoff, deposit confirmed root cause to skills.md |
+| `claudart kill` | Abandon session — archive handoff, remove symlink (no skills update) |
+| `claudart preflight <op>` | Sync check before starting an operation (`debug` \| `save` \| `test`) |
 | `claudart status` | Show current session state |
 | `claudart teardown` | End session — update knowledge, archive, suggest commit |
 | `claudart unlink` | Remove workspace symlinks from project |
@@ -203,7 +216,13 @@ Generic patterns    Project patterns
 Next session: agents start with richer context automatically
 ```
 
-`skills.md` accumulates hot paths (files that keep showing up), root cause patterns, anti-patterns (files that looked relevant but weren't), and a full session index. Over time, `/suggest` stops re-exploring dead ends it already visited.
+`skills.md` accumulates:
+- **Pending** — confirmed root causes from in-progress sessions (written by `/save`, promoted by `teardown`)
+- **Hot paths** — files that keep showing up across sessions
+- **Root cause patterns** — generic descriptions of what went wrong and how it was fixed
+- **Anti-patterns** — files that looked relevant but weren't
+
+Over time, `/suggest` stops re-exploring dead ends it already visited.
 
 ---
 
@@ -213,51 +232,81 @@ Next session: agents start with richer context automatically
 <summary><strong>Workspace structure — everything that lives on disk</strong></summary>
 
 ```
-$CLAUDART_WORKSPACE/
-  knowledge/
-    generic/
-      dart_flutter.md     ← generic Dart/Flutter best practices (version-tagged)
-      bloc.md             ← BLoC patterns accumulated from real sessions
-      riverpod.md         ← Riverpod patterns
-      testing.md          ← testing patterns
-    projects/
-      my-app.md           ← project-specific context and accumulated patterns
-  handoff.md              ← current session state (reset each teardown)
-  skills.md               ← cross-session index: hot paths, root causes, anti-patterns
-  archive/                ← every past session, timestamped
-  token_map.json          ← [sensitivity mode] persistent abstract token map
-  config.json             ← per-workspace config (sensitivity mode, scan scope, etc.)
-  logs/
-    interactions.jsonl    ← per-command structured log (capped at 500 entries)
-    errors.jsonl          ← error log with deduplication by fingerprint
-    performance.md        ← scan timing and token counts
-  .claude/
-    commands/
-      suggest.md          ← /suggest slash command definition
-      debug.md            ← /debug slash command definition
-      teardown.md         ← /teardown slash command definition
-  CLAUDE.md               ← aggregator: tells Claude which knowledge files to load
+~/.claudart/
+  registry.json               ← index of all registered projects (name, root, workspace path)
+
+  my-app/                     ← per-project workspace (created by claudart link)
+    handoff.md                ← current session state (reset each teardown)
+    skills.md                 ← cross-session index: pending, hot paths, root causes, anti-patterns
+    archive/                  ← every past session + checkpoints, timestamped
+    knowledge/
+      generic/
+        dart_flutter.md       ← generic Dart/Flutter best practices (version-tagged)
+        bloc.md               ← BLoC patterns accumulated from real sessions
+        riverpod.md           ← Riverpod patterns
+        testing.md            ← testing patterns
+      projects/
+        my-app.md             ← project-specific context and accumulated patterns
+    token_map.json            ← [sensitivity mode] persistent abstract token map
+    config.json               ← per-workspace config (sensitivity mode, scan scope, etc.)
+    logs/
+      interactions.jsonl      ← per-command structured log (capped at 500 entries)
+      errors.jsonl            ← error log with deduplication by fingerprint
+      performance.md          ← scan timing and token counts
+    .claude/
+      commands/
+        suggest.md            ← /suggest slash command definition
+        debug.md              ← /debug slash command definition
+        save.md               ← /save slash command definition
+        teardown.md           ← /teardown slash command definition
 ```
 
-The workspace is never inside a project. Projects symlink to it at session time and unlink after.
+The workspace is never inside a project. `claudart link` creates a `.claude` symlink from your project root to the workspace's `.claude/commands/` directory, making slash commands available in your editor. The symlink is removed by `claudart kill` or `claudart teardown`.
 
 </details>
 
 <details>
-<summary><strong>claudart link — how SDK constraints are scoped per project</strong></summary>
+<summary><strong>Preflight sync checks — how claudart keeps state consistent</strong></summary>
 
-`claudart link` does more than create symlinks. It reads the project's `pubspec.yaml`, extracts the `environment.sdk` and `flutter` constraints, and embeds them into the generated `CLAUDE.md`:
+Before any operation that depends on the handoff, claudart runs a preflight check:
 
-```markdown
-## Environment
-
-- Dart SDK: `^3.8.0`
-- Flutter: `3.32.5`
-
-Do not suggest APIs or syntax unavailable within these constraints.
+```
+claudart preflight debug   ← run before /debug
+claudart preflight save    ← run before /save
+claudart preflight test    ← run before test suite (checks coverage maps too)
 ```
 
-This means the Dart analyzer and Claude Code both know exactly what SDK version to target for *this* project — not whatever is globally installed. Different projects can have different constraints and the workspace handles each correctly.
+Three checks run on every preflight call:
+
+**1. Handoff status check**
+For `debug`: handoff must be `ready-for-debug` or `debug-in-progress`. Any other status is an error — `/suggest` hasn't finished.
+
+**2. Skills sync check**
+If a root cause is confirmed in the handoff, a matching entry must exist in `skills.md → ## Pending`. A missing entry means `/save` was skipped. This is a warning — it doesn't block the operation, but it means a checkpoint was missed.
+
+**3. Branch sync check**
+Current git branch is compared to the branch recorded in the handoff header. A mismatch warns you that you may be operating on the wrong session context.
+
+**4. Coverage gap check** (test operation only)
+Scans all `test_*.md` module files for coverage table rows marked `—`. Each declared gap is surfaced before the test run.
+
+Preflight exits 0 for clean and warnings (workflow continues). Exits 1 for errors (workflow blocked).
+
+</details>
+
+<details>
+<summary><strong>claudart link — registry-based project management</strong></summary>
+
+`claudart link` does more than create symlinks. It:
+
+1. Registers the project in `~/.claudart/registry.json` with name, project root, and workspace path
+2. Creates an isolated workspace at `~/.claudart/<project-name>/`
+3. Wires `.claude` symlink from project root to workspace commands directory
+4. Reads `pubspec.yaml` to extract SDK/Flutter constraints for the generated `CLAUDE.md`
+5. Auto-adds `.claude` to `.gitignore` (no duplicate entries)
+6. Prompts for sensitivity mode — stored per-project in the registry
+
+Re-linking an existing project updates the symlink and sensitivity mode while preserving the original `createdAt` timestamp and all existing workspace content.
 
 </details>
 
@@ -420,15 +469,27 @@ bin/claudart.dart           ← entry point + command dispatch
 lib/
   commands/
     init.dart               ← workspace + project initialization
-    launch.dart             ← interactive launcher menu
-    link.dart               ← pubspec parsing, symlinks, config questions
+    launch.dart             ← interactive launcher menu (registry-driven, phase-separated)
+    link.dart               ← registry entry creation, symlinks, .gitignore, sensitivity mode
     unlink.dart             ← safe symlink removal
     setup.dart              ← session start, scan trigger, abstraction, logging
+    save.dart               ← session checkpoint: snapshot handoff, deposit to skills.md Pending
+    kill.dart               ← session abandon: archive + reset + unlink (no skills update)
+    preflight_cmd.dart      ← preflight sync check CLI wrapper
     status.dart             ← display current handoff state
     teardown.dart           ← end session, update knowledge, archive
     scan.dart               ← on-demand project rescan
     report.dart             ← diagnostic bundle + GitHub issue filing
     map_cmd.dart            ← generate token_map.md
+    suggest_template.dart   ← /suggest slash command definition (written to workspace)
+    debug_template.dart     ← /debug slash command definition
+    save_template.dart      ← /save slash command definition
+
+  session/
+    session_state.dart      ← immutable parsed view of handoff.md
+    session_ops.dart        ← transactional session close with rollback
+    workspace_guard.dart    ← lock file mechanism for interrupted state detection
+    sync_check.dart         ← preflight pure functions: status, skills, branch, coverage gaps
 
   sensitivity/
     detector.dart           ← TF-IDF + regex sensitive token detection
@@ -451,22 +512,27 @@ lib/
   config.dart               ← WorkspaceConfig read/write (config.json)
   ignore_rules.dart         ← .claudartignore pattern matching
   file_io.dart              ← abstract FileIO + RealFileIO (testability)
+  git_utils.dart            ← detectGitContext(): root + branch in one git call
   process_runner.dart       ← abstract ProcessRunner + RealProcessRunner
   md_io.dart                ← markdown section read/write utilities
   handoff_template.dart     ← handoff.md template generator
   knowledge_templates.dart  ← starter knowledge content generators
   pubspec_utils.dart        ← SDK constraint extraction from pubspec.yaml
-  teardown_utils.dart       ← pure teardown logic (extracted for testability)
-  paths.dart                ← workspace path resolution from env var
+  teardown_utils.dart       ← pure utilities: extractBranch, extractSection, archiveName, etc.
+  paths.dart                ← workspace path resolution + per-project path helpers
+  registry.dart             ← immutable project registry (load/save/add/remove/touchSession)
 ```
 
 **Key design patterns:**
 
-- All file I/O goes through the `FileIO` interface — production uses `RealFileIO`, tests use `MemoryFileIO` (in-memory map) or `MockFileIO` (mocktail-based)
-- Pure functions are separated from side effects — `teardown_utils.dart`, `knowledge_templates.dart`, `md_io.dart` have no I/O side effects and are trivially testable
+- All file I/O goes through the `FileIO` interface — production uses `RealFileIO`, tests use `MemoryFileIO`
+- All git calls go through `detectGitContext()` — one subprocess, root + branch together, no duplication
+- Pure functions are separated from side effects — `sync_check.dart`, `teardown_utils.dart`, `knowledge_templates.dart`, `md_io.dart` have no I/O side effects and are trivially testable
+- Injectable parameters (`exitFn`, `confirmFn`, `pickFn`, `projectRootOverride`) on every command — prevents `exit()` from terminating the test process
+- Transactional session close in `session_ops.dart` — archive → reset → unlink with full rollback on any step failure
 - No new runtime dependencies — TF-IDF, cosine similarity, and static analysis are all implemented in pure Dart
 
-**164 tests. Zero warnings on `dart pub publish --dry-run`.**
+**335 tests. Zero warnings on `dart pub publish --dry-run`.**
 
 </details>
 

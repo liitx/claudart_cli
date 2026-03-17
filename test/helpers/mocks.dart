@@ -15,16 +15,24 @@ class MockProcessRunner extends Mock implements ProcessRunner {}
 class MemoryFileIO implements FileIO {
   final Map<String, String> files;
   final Set<String> dirs;
+  final Set<String> links;
 
-  MemoryFileIO({Map<String, String>? files, Set<String>? dirs})
-      : files = Map.from(files ?? {}),
-        dirs = Set.from(dirs ?? {});
+  MemoryFileIO({
+    Map<String, String>? files,
+    Set<String>? dirs,
+    Set<String>? links,
+  })  : files = Map.from(files ?? {}),
+        dirs = Set.from(dirs ?? {}),
+        links = Set.from(links ?? {});
 
   @override
   String read(String path) => files[path] ?? '';
 
   @override
   void write(String path, String content) => files[path] = content;
+
+  @override
+  void delete(String path) => files.remove(path);
 
   @override
   bool fileExists(String path) => files.containsKey(path);
@@ -45,6 +53,15 @@ class MemoryFileIO implements FileIO {
         })
         .toList();
   }
+
+  @override
+  bool linkExists(String path) => links.contains(path);
+
+  @override
+  void deleteLink(String path) => links.remove(path);
+
+  @override
+  void createLink(String linkPath, String targetPath) => links.add(linkPath);
 }
 
 /// Returns a [ProcessResult] with the given stdout and exit code 0.

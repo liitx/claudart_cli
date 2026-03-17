@@ -1,0 +1,7 @@
+# claudart test configuration
+# Run tests with randomized ordering via:
+#   dart test --test-randomize-ordering-seed=random
+# or use the /test Claude Code command which handles this automatically.
+
+timeout: 30s
+concurrency: 4
