@@ -27,8 +27,23 @@ String appendToSection(String content, String header, String newEntry) {
   if (match == null) return '$content\n## $header\n\n$newEntry\n';
 
   final existing = match.group(2)!.trim();
-  final isBlank = existing.startsWith('_No') || existing.startsWith('_None');
-  final updated = isBlank ? newEntry : '$existing\n$newEntry';
+
+  // Separate blockquote metadata lines (e.g. "> Description of section") from
+  // actual content. Metadata lines must not be mistaken for real entries, and
+  // must not prevent blank detection when they precede a placeholder.
+  final lines = existing.split('\n');
+  final metaLines = lines.where((l) => l.trimLeft().startsWith('>')).toList();
+  final contentOnly = lines
+      .where((l) => !l.trimLeft().startsWith('>'))
+      .join('\n')
+      .trim();
+
+  final isBlank = contentOnly.isEmpty ||
+      contentOnly.startsWith('_No') ||
+      contentOnly.startsWith('_None');
+
+  final meta = metaLines.isNotEmpty ? '${metaLines.join('\n')}\n\n' : '';
+  final updated = isBlank ? '$meta$newEntry' : '$existing\n$newEntry';
   return content.replaceFirst(pattern, '${match.group(1)}$updated\n');
 }
 

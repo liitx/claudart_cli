@@ -84,6 +84,41 @@ content
       expect(result, contains('## New Section'));
       expect(result, contains('- entry'));
     });
+
+    test('replaces placeholder when blockquote metadata precedes it', () {
+      const withMeta = '''## Pending
+
+> Confirmed facts from in-progress sessions.
+
+_Nothing yet._
+
+## Other
+
+content
+''';
+      final result = appendToSection(withMeta, 'Pending', '- new entry');
+      expect(result, contains('- new entry'));
+      expect(result, isNot(contains('_Nothing yet._')));
+      // Blockquote metadata is preserved.
+      expect(result, contains('> Confirmed facts from in-progress sessions.'));
+    });
+
+    test('appends after existing entries when section has blockquote metadata', () {
+      const withMetaAndEntry = '''## Pending
+
+> Confirmed facts from in-progress sessions.
+
+- existing entry
+
+## Other
+
+content
+''';
+      final result = appendToSection(withMetaAndEntry, 'Pending', '- new entry');
+      expect(result, contains('- existing entry'));
+      expect(result, contains('- new entry'));
+      expect(result, contains('> Confirmed facts from in-progress sessions.'));
+    });
   });
 
   group('incrementHotPath', () {

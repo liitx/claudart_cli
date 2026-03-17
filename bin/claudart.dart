@@ -1,8 +1,11 @@
 import 'dart:io';
 import '../lib/commands/init.dart';
+import '../lib/commands/kill.dart';
+import '../lib/commands/save.dart';
 import '../lib/commands/launch.dart';
 import '../lib/commands/link.dart';
 import '../lib/commands/map_cmd.dart';
+import '../lib/commands/preflight_cmd.dart';
 import '../lib/commands/report.dart';
 import '../lib/commands/scan.dart';
 import '../lib/commands/setup.dart';
@@ -25,6 +28,9 @@ Commands:
   setup [path]           Start a new session (path defaults to current directory)
   status                 Show current session state
   teardown               Close session: update knowledge, archive handoff, suggest commit
+  save                   Checkpoint session: snapshot handoff, deposit confirmed facts to skills
+  kill                   Abandon session: archive handoff, remove symlink (no skills update)
+  preflight <op>         Sync check before starting an operation (op: debug | save | test)
   scan [--scope lib|full|handoff] [--full]  Re-scan project for sensitive tokens
   report [--file-issue]  Show diagnostic report; --file-issue files GitHub issues
   map                    Generate token_map.md from token_map.json
@@ -60,6 +66,13 @@ Future<void> main(List<String> args) async {
       runStatus();
     case 'teardown':
       await runTeardown();
+    case 'save':
+      await runSave();
+    case 'kill':
+      await runKill();
+    case 'preflight':
+      final op = rest.isNotEmpty ? rest.first : 'test';
+      await runPreflightCmd(op);
     case 'scan':
       String? scope;
       bool full = rest.contains('--full');
