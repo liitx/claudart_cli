@@ -63,7 +63,7 @@ Future<void> main(List<String> args) async {
     case 'setup':
       await runSetup(projectPath: rest.isNotEmpty ? rest.first : '.');
     case 'status':
-      runStatus();
+      await runStatus();
     case 'teardown':
       await runTeardown();
     case 'save':
