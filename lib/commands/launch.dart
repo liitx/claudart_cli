@@ -1,145 +1,203 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import '../md_io.dart';
+import '../file_io.dart';
+import '../git_utils.dart';
 import '../paths.dart';
-import 'init.dart';
+import '../registry.dart';
+import '../session/session_state.dart';
+import '../session/workspace_guard.dart';
+import 'kill.dart';
 import 'link.dart';
 import 'setup.dart';
 
+// ANSI hyperlink: ESC]8;;url ESC\ text ESC]8;; ESC\
+// Renders as a clickable link in terminals that support OSC 8.
+const _readmeSensitivityUrl =
+    'https://github.com/liitx/claudart#sensitivity-mode';
+
+String _hyperlink(String text, String url) =>
+    '\x1b]8;;$url\x1b\\$text\x1b]8;;\x1b\\';
+
 /// Interactive launcher — runs when `claudart` is invoked with no arguments.
-/// Lists workspace projects and guides the user into the debug/suggest workflow.
-Future<void> runLauncher() async {
+///
+/// Phase 1: loads registry only — shows project list before any workspace is opened.
+/// Phase 2: loads workspace config and handoff only after the user selects a project.
+Future<void> runLauncher({
+  FileIO? io,
+  String? projectRootOverride,
+  int Function(String prompt, int max)? pickFn,
+  bool Function(String question)? confirmFn,
+  Never Function(int code)? exitFn,
+}) async {
+  final fileIO = io ?? const RealFileIO();
+  final exit_ = exitFn ?? exit;
+  final pick_ = pickFn ?? _defaultPick;
+
   print('\n═══════════════════════════════════════');
   print('  CLAUDART');
   print('═══════════════════════════════════════');
 
-  // Check workspace is initialized
-  if (!Directory(genericKnowledgeDir).existsSync()) {
-    print('\nWorkspace not initialized.');
-    if (confirm('Initialize workspace now?')) {
-      await runInit([]);
+  // ── Phase 1: Registry load ─────────────────────────────────────────────────
+
+  final registry = Registry.load(io: fileIO);
+  final currentRoot = projectRootOverride ?? detectGitContext()?.root;
+
+  if (registry.isEmpty) {
+    print('\nNo projects registered yet.');
+    if (currentRoot != null) {
+      print('  Current directory: $currentRoot');
+      print('\nRun `claudart link` from your project to register it.\n');
     } else {
-      print('\nRun `claudart init` to set up the workspace.\n');
-      exit(0);
+      print('\nNavigate to a project directory and run `claudart link`.\n');
     }
+    exit_(0);
   }
 
-  // List available projects
-  final projectsDir = Directory(projectsKnowledgeDir);
-  List<String> projects;
-  if (projectsDir.existsSync()) {
-    projects = projectsDir
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.md'))
-        .map((f) => p.basenameWithoutExtension(f.path))
-        .toList()
-      ..sort();
+  // Detect active project from current git root (if any).
+  final currentEntry = currentRoot != null
+      ? registry.findByProjectRoot(currentRoot)
+      : null;
+
+  final entries = registry.entries;
+  final canRegister = currentRoot != null && currentEntry == null;
+
+  // Print project list.
+  print('');
+  for (var i = 0; i < entries.length; i++) {
+    final e = entries[i];
+    final isCurrent = e == currentEntry;
+    final locked = isLocked(e.workspacePath, io: fileIO);
+    final symlink = p.join(e.projectRoot, '.claude');
+    final linked = fileIO.linkExists(symlink);
+
+    final markers = [
+      if (isCurrent) '(here)',
+      if (linked) 'linked',
+      if (locked) '⚠ interrupted',
+      if (e.sensitivityMode)
+        _hyperlink('[sensitive]', _readmeSensitivityUrl),
+    ].join('  ');
+
+    final label = '${i + 1}. ${e.name}';
+    final meta = '  last: ${e.lastSession}';
+    print('  $label$meta  $markers'.trimRight());
+  }
+
+  if (canRegister) {
+    print('  ${entries.length + 1}. + Register ${p.basename(currentRoot)}');
+  }
+
+  print('');
+
+  // ── User picks project ─────────────────────────────────────────────────────
+
+  final maxChoice = entries.length + (canRegister ? 1 : 0);
+  final choice = pick_('Select', maxChoice);
+
+  if (canRegister && choice == maxChoice) {
+    await runLink([]);
+    return;
+  }
+
+  final selected = entries[choice - 1];
+
+  // ── Phase 2: Workspace load ────────────────────────────────────────────────
+
+  final workspace = selected.workspacePath;
+  final handoffFile = handoffPathFor(workspace);
+  final handoff =
+      fileIO.fileExists(handoffFile) ? fileIO.read(handoffFile) : '';
+  final state = handoff.isNotEmpty ? SessionState.parse(handoff) : null;
+  final locked = isLocked(workspace, io: fileIO);
+
+  print('\n─── ${selected.name} ${'─' * (35 - selected.name.length)}');
+  if (state != null) {
+    print('  Branch : ${state.branch}');
+    print('  Status : ${state.status}');
+    if (state.hasActiveContent) {
+      print('  Bug    : ${_truncate(state.bug)}');
+    }
   } else {
-    projects = [];
+    print('  No active session.');
+  }
+  if (locked) {
+    final op = interruptedOperation(workspace, io: fileIO) ?? 'unknown';
+    print('  ⚠  Interrupted during: $op');
+  }
+  print('');
+
+  // ── Action menu ───────────────────────────────────────────────────────────
+
+  if (locked) {
+    print('  1. Kill session  (clear lock, archive, remove symlink)');
+    print('  2. Back\n');
+    final action = pick_('Choose', 2);
+    if (action == 1) {
+      await runKill(
+        io: fileIO,
+        projectRootOverride: selected.projectRoot,
+        confirmFn: confirmFn,
+        exitFn: exitFn,
+      );
+    }
+    return;
   }
 
-  print('\nWorkspace: $claudeDir');
+  final hasActive = state != null && state.hasActiveContent;
 
-  if (projects.isEmpty) {
-    print('\nNo projects found in workspace.');
-    print('Run `claudart init --project <name>` to add a project.\n');
-    exit(0);
-  }
-
-  print('\nAvailable projects:');
-  for (var i = 0; i < projects.length; i++) {
-    final linked = _isLinked(projects[i]);
-    print('  ${i + 1}. ${projects[i]}${linked ? '  (linked)' : ''}');
-  }
-
-  // Pick a project
-  final projectName = _pickProject(projects);
-
-  // New or existing bug?
-  print('\nWorkflow:');
-  print('  1. New bug — start a fresh session');
-  print('  2. Existing bug — resume active handoff');
-
-  final choice = _pickNumber('Choose', 2);
-
-  if (choice == 1) {
-    // New bug: ensure link exists, then setup
-    await _ensureLinked(projectName);
-    await runSetup(projectPath: Directory.current.path);
+  if (hasActive) {
+    print('  1. Resume  (open editor and run /suggest or /debug)');
+    print('  2. Kill    (archive handoff, discard session)');
+    print('  3. Back\n');
+    final action = pick_('Choose', 3);
+    if (action == 1) {
+      _printResumeInstructions(state.status);
+    } else if (action == 2) {
+      await runKill(
+        io: fileIO,
+        projectRootOverride: selected.projectRoot,
+        confirmFn: confirmFn,
+        exitFn: exitFn,
+      );
+    }
   } else {
-    // Existing bug: check handoff status
-    final handoff = readFile(handoffPath);
-    if (handoff.isEmpty) {
-      print('\nNo active handoff found. Starting a new session instead.');
-      await _ensureLinked(projectName);
-      await runSetup(projectPath: Directory.current.path);
-    } else {
-      final status = readStatus(handoff);
-      print('\nActive handoff status: $status');
-      print('\nNext steps:');
-      _printNextSteps(status);
+    print('  1. Start new session');
+    print('  2. Back\n');
+    final action = pick_('Choose', 2);
+    if (action == 1) {
+      await runSetup(projectPath: selected.projectRoot);
     }
   }
 }
 
-String _pickProject(List<String> projects) {
-  if (projects.length == 1) {
-    print('\nUsing project: ${projects.first}');
-    return projects.first;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+void _printResumeInstructions(String status) {
+  print('');
+  switch (status) {
+    case 'suggest-investigating':
+      print('Open your editor and run /suggest to continue exploration.');
+    case 'ready-for-debug':
+      print('Root cause identified. Run /debug to implement the fix.');
+    case 'debug-in-progress':
+      print('Fix in progress. Run /debug to continue.');
+    case 'needs-suggest':
+      print('Debug hit a blocker. Run /suggest for broader exploration.');
+    default:
+      print('Run /suggest to begin or /debug if root cause is known.');
   }
-  while (true) {
-    stdout.write('\nSelect project (1–${projects.length}) > ');
-    final input = stdin.readLineSync()?.trim() ?? '';
-    final n = int.tryParse(input);
-    if (n != null && n >= 1 && n <= projects.length) {
-      return projects[n - 1];
-    }
-    print('Please enter a number between 1 and ${projects.length}.');
-  }
+  print('');
 }
 
-int _pickNumber(String prompt, int max) {
+String _truncate(String s, {int max = 60}) =>
+    s.length > max ? '${s.substring(0, max)}…' : s;
+
+int _defaultPick(String prompt, int max) {
   while (true) {
-    stdout.write('\n$prompt (1–$max) > ');
+    stdout.write('$prompt (1–$max) > ');
     final input = stdin.readLineSync()?.trim() ?? '';
     final n = int.tryParse(input);
     if (n != null && n >= 1 && n <= max) return n;
-    print('Please enter a number between 1 and $max.');
+    print('Enter a number between 1 and $max.');
   }
-}
-
-bool _isLinked(String projectName) {
-  // A project is "linked" if the workspace CLAUDE.md references it.
-  // We check the generated CLAUDE.md for the project name.
-  final claudeMd = readFile(claudeMdPath);
-  return claudeMd.contains('Project: $projectName');
-}
-
-Future<void> _ensureLinked(String projectName) async {
-  // Check if cwd already has a symlink to the workspace
-  final claudeLink = p.join(Directory.current.path, '.claude');
-  final type = FileSystemEntity.typeSync(claudeLink, followLinks: false);
-  if (type == FileSystemEntityType.link) return; // already linked
-
-  print('\nProject not linked to current directory.');
-  if (confirm('Link workspace into current directory now?')) {
-    await runLink([projectName]);
-  }
-}
-
-void _printNextSteps(String status) {
-  switch (status) {
-    case 'suggest-investigating':
-      print('  → Open your editor and run /suggest to continue exploration.');
-    case 'ready-for-debug':
-      print('  → Root cause identified. Run /debug to implement the fix.');
-    case 'debug-in-progress':
-      print('  → Fix in progress. Run /debug to continue.');
-    case 'needs-suggest':
-      print('  → Debug hit a blocker. Run /suggest for broader exploration.');
-    default:
-      print('  → Run /suggest to begin or /debug if root cause is known.');
-  }
-  print('');
 }

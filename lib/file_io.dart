@@ -5,10 +5,14 @@ import 'dart:io';
 abstract class FileIO {
   String read(String path);
   void write(String path, String content);
+  void delete(String path);
   bool fileExists(String path);
   bool dirExists(String path);
   void createDir(String path);
   List<String> listFiles(String dirPath, {String? extension});
+  bool linkExists(String path);
+  void deleteLink(String path);
+  void createLink(String linkPath, String targetPath);
 }
 
 /// Production implementation backed by dart:io.
@@ -26,6 +30,12 @@ class RealFileIO implements FileIO {
     File(path)
       ..parent.createSync(recursive: true)
       ..writeAsStringSync(content);
+  }
+
+  @override
+  void delete(String path) {
+    final f = File(path);
+    if (f.existsSync()) f.deleteSync();
   }
 
   @override
@@ -48,4 +58,18 @@ class RealFileIO implements FileIO {
         .where((p) => extension == null || p.endsWith(extension))
         .toList();
   }
+
+  @override
+  bool linkExists(String path) =>
+      FileSystemEntity.typeSync(path, followLinks: false) ==
+      FileSystemEntityType.link;
+
+  @override
+  void deleteLink(String path) {
+    if (linkExists(path)) Link(path).deleteSync();
+  }
+
+  @override
+  void createLink(String linkPath, String targetPath) =>
+      Link(linkPath).createSync(targetPath);
 }

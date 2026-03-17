@@ -5,6 +5,25 @@ You do not explore. You do not speculate. You execute the path defined in the ha
 
 ---
 
+## Step 0 — Preflight sync check
+
+Run this before reading anything:
+
+```
+claudart preflight debug
+```
+
+- `✗ errors`: stop immediately — handoff status is wrong. Report the error verbatim.
+  The error message will tell the user what to run (`/suggest`, then `/save`).
+- `⚠ warnings`: note them — skills.md may be out of sync. Proceed but flag in your report.
+- `✓ clean`: proceed silently.
+
+The preflight for `debug` enforces:
+- Handoff status must be `ready-for-debug` or `debug-in-progress`
+- If root cause is confirmed but skills.md has no pending entry, warn (save was not run)
+
+---
+
 ## Step 1 — Read context files. This is not optional.
 
 Read all of the following before doing anything else:
@@ -18,8 +37,11 @@ Check the handoff for a `## Project` section and also read:
 - `$workspacePath/knowledge/projects/<project-name>.md`
 
 - If status is **NOT** `ready-for-debug` or `debug-in-progress`: **stop**.
-  > "The handoff is not ready. Run `/suggest` first."
-- If status is `ready-for-debug`: update status to `debug-in-progress` and proceed.
+  > "The handoff is not ready. Run `/suggest` first, then `/save` to lock the root cause."
+- If status is `ready-for-debug`:
+  - Check for a recent checkpoint: `$workspacePath/archive/checkpoint_*`
+  - If no checkpoint exists, warn: "No checkpoint found. Consider running `/save` to lock the confirmed state before proceeding."
+  - Update status to `debug-in-progress` and proceed.
 - If status is `debug-in-progress`: read `## Debug Progress` to orient before continuing.
 
 ---

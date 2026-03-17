@@ -6,6 +6,7 @@ import '../paths.dart';
 import '../knowledge_templates.dart';
 import '../commands/suggest_template.dart';
 import '../commands/debug_template.dart';
+import '../commands/save_template.dart';
 import '../commands/teardown_template.dart';
 
 Future<void> runInit(List<String> args) async {
@@ -61,6 +62,7 @@ Future<void> _initWorkspace() async {
   // Write Claude Code slash commands into workspace
   writeFile(p.join(claudeCommandsDir, 'suggest.md'), suggestCommandTemplate(claudeDir));
   writeFile(p.join(claudeCommandsDir, 'debug.md'), debugCommandTemplate(claudeDir));
+  writeFile(p.join(claudeCommandsDir, 'save.md'), saveCommandTemplate(claudeDir));
   writeFile(p.join(claudeCommandsDir, 'teardown.md'), teardownCommandTemplate(claudeDir));
 
   // Write blank handoff and skills if not present
