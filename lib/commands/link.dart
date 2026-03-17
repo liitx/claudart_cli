@@ -4,6 +4,9 @@ import '../file_io.dart';
 import '../git_utils.dart';
 import '../paths.dart';
 import '../registry.dart';
+import 'suggest_template.dart';
+import 'debug_template.dart';
+import 'save_template.dart';
 
 /// Registers the current project with claudart and creates the `.claude` symlink.
 ///
@@ -97,14 +100,36 @@ Future<void> runLink(
     print('\n⚠  Removing existing .claude symlink.');
     fileIO.deleteLink(symlinkPath);
   }
-  fileIO.createLink(symlinkPath, symlinkTarget);
 
-  // 8 — Auto-add .claude to .gitignore.
-  _ensureGitignore(projectRoot, fileIO);
+  final symlinkSkipped = fileIO.dirExists(symlinkPath);
+  if (symlinkSkipped) {
+    print('\n⚠  .claude/ is a real directory — symlink skipped.');
+    print('  Slash commands in .claude/commands/ are already available.');
+  } else {
+    fileIO.createLink(symlinkPath, symlinkTarget);
+  }
+
+  // 7b — Write suggest/debug/save templates to workspace .claude/commands/.
+  // Always written so the workspace stays in sync regardless of symlink state.
+  final workspaceCmdsDir = p.join(workspace, '.claude', 'commands');
+  fileIO.write(p.join(workspaceCmdsDir, 'suggest.md'),
+      suggestCommandTemplate(workspace));
+  fileIO.write(p.join(workspaceCmdsDir, 'debug.md'),
+      debugCommandTemplate(workspace));
+  fileIO.write(p.join(workspaceCmdsDir, 'save.md'),
+      saveCommandTemplate(workspace));
+
+  // 8 — Auto-add .claude to .gitignore (only when a symlink was created).
+  // When .claude/ is a real tracked directory, do not gitignore it.
+  if (!symlinkSkipped) _ensureGitignore(projectRoot, fileIO);
 
   print('\n✓ Registered: $effectiveName');
   print('  Workspace : $workspace');
-  print('  Symlink   : $symlinkPath → $symlinkTarget');
+  if (symlinkSkipped) {
+    print('  Commands  : .claude/commands/ (source directory, no symlink needed)');
+  } else {
+    print('  Symlink   : $symlinkPath → $symlinkTarget');
+  }
   if (sensitivityMode) print('  Sensitivity mode: ON');
   print('\nRun `claudart setup` to begin a session.\n');
 }

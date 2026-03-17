@@ -233,6 +233,34 @@ void main() {
         isTrue,
       );
     });
+
+    test('skips symlink when .claude is a real directory', () async {
+      final io = _emptyIO();
+      // Pre-create .claude as a real directory in project root.
+      io.createDir(p.join(_projectRoot, '.claude'));
+
+      await runLink(
+        [_projectName],
+        io: io,
+        projectRootOverride: _projectRoot,
+        confirmFn: (_) => false,
+        exitFn: _throwExit,
+      );
+
+      // Registration should succeed.
+      final entry = Registry.load(io: io).findByName(_projectName);
+      expect(entry, isNotNull);
+      expect(entry!.projectRoot, equals(_projectRoot));
+
+      // .claude directory should still exist (not replaced).
+      expect(io.dirExists(p.join(_projectRoot, '.claude')), isTrue);
+
+      // No symlink should be created.
+      expect(io.linkExists(p.join(_projectRoot, '.claude')), isFalse);
+
+      // Workspace directory should still be created.
+      expect(io.dirExists(workspaceFor(_projectName)), isTrue);
+    });
   });
 
   group('link — .gitignore edge cases', () {

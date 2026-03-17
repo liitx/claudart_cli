@@ -106,6 +106,7 @@ No bare `File()`, `Directory()`, or `Link()` calls inside `runLink`.
 | Re-link — createdAt preserved                   | ✓       |
 | Re-link — stale symlink replaced                | ✓       |
 | Re-link — sensitivityMode updatable             | ✓       |
+| Re-link — .claude is real directory (skipped)   | ✓       |
 | .gitignore created when missing                 | ✓       |
 | .gitignore existing content preserved           | ✓       |
 
