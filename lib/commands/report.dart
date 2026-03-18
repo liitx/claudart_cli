@@ -21,7 +21,7 @@ Future<void> runReport({
 
   final logsDir = workspacePath != null
       ? logsDirFor(workspacePath)
-      : p.join(claudeDir, 'logs');
+      : logsDirFor(claudeDir);
   final interactionsPath = p.join(logsDir, 'interactions.jsonl');
   final errorsPath = p.join(logsDir, 'errors.jsonl');
 
