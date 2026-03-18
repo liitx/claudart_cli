@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import '../md_io.dart';
 import '../paths.dart';
 import '../knowledge_templates.dart';
+import '../handoff_template.dart';
 import '../commands/suggest_template.dart';
 import '../commands/debug_template.dart';
 import '../commands/save_template.dart';
@@ -62,7 +63,7 @@ Future<void> _initWorkspace() async {
   writeFile(p.join(claudeCommandsDir, 'teardown.md'), teardownCommandTemplate(claudeDir));
 
   // Write blank handoff and skills if not present
-  _writeIfAbsent(handoffPath, _blankHandoff);
+  _writeIfAbsent(handoffPath, blankHandoff);
   _writeIfAbsent(skillsPath, _blankSkills);
 
   print('\n✓ Generic knowledge files written to $genericKnowledgeDir');
@@ -114,77 +115,6 @@ Future<String?> _detectVersion(String cmd, List<String> args) async {
     return null;
   }
 }
-
-const String _blankHandoff = '''# Agent Handoff
-
-> Source of truth between suggest and debug agents.
-> Run `claudart setup` to begin a new session.
-
----
-
-## Status
-
-suggest-investigating
-
----
-
-## Bug
-
-_Not yet determined._
-
----
-
-## Expected Behavior
-
-_Not yet determined._
-
----
-
-## Root Cause
-
-_Not yet determined._
-
----
-
-## Scope
-
-### Files in play
-_Not yet determined._
-
-### Classes / methods in play
-_Not yet determined._
-
-### Must not touch
-_Not yet determined._
-
----
-
-## Constraints
-
-_None yet._
-
----
-
-## Debug Progress
-
-### What was attempted
-_Nothing yet._
-
-### What changed (files modified)
-_Nothing yet._
-
-### What is still unresolved
-_Nothing yet._
-
-### Specific question for suggest
-_Nothing yet._
-
----
-
-## Suggest Resume Notes
-
-_Nothing yet._
-''';
 
 const String _blankSkills = '''# Accumulated Skills
 > Updated by claudart teardown after each resolved session.

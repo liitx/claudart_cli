@@ -11,7 +11,7 @@ void runMap({FileIO? io, String? workspacePath}) {
 
   final tokenMapPath = workspacePath != null
       ? tokenMapPathFor(workspacePath)
-      : p.join(claudeDir, 'token_map.json');
+      : tokenMapPathFor(claudeDir);
   final tokenMapMdPath = workspacePath != null
       ? p.join(workspacePath, 'token_map.md')
       : p.join(claudeDir, 'token_map.md');
