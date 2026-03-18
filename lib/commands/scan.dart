@@ -1,4 +1,3 @@
-import 'package:path/path.dart' as p;
 import '../config.dart';
 import '../file_io.dart';
 import '../ignore_rules.dart';
@@ -42,7 +41,7 @@ Future<void> runScan({
 
   final tokenMapPath = workspacePath != null
       ? tokenMapPathFor(workspacePath)
-      : p.join(claudeDir, 'token_map.json');
+      : tokenMapPathFor(claudeDir);
 
   final ignoreRules = loadIgnoreRules(projectRoot, io: fileIO);
   final tokenMap = TokenMap.load(tokenMapPath, io: fileIO);

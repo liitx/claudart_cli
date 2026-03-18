@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:claudart/teardown_utils.dart';
+import 'package:claudart/commands/teardown.dart' show TeardownCategory;
 
 void main() {
   group('extractBranch', () {
@@ -140,48 +141,66 @@ _No sessions recorded yet._
     });
   });
 
-  group('areaFromCategory', () {
-    test('bloc categories', () {
-      expect(areaFromCategory('bloc-event-handling'), 'bloc');
-      expect(areaFromCategory('event-loop'), 'bloc');
+  group('TeardownCategory.area', () {
+    test('apiIntegration → api', () {
+      expect(TeardownCategory.apiIntegration.area, 'api');
     });
 
-    test('provider categories', () {
-      expect(areaFromCategory('provider-state'), 'provider');
-      expect(areaFromCategory('riverpod-async'), 'provider');
+    test('concurrency → async', () {
+      expect(TeardownCategory.concurrency.area, 'async');
     });
 
-    test('api categories', () {
-      expect(areaFromCategory('api-mapping'), 'api');
-      expect(areaFromCategory('repository-cache'), 'api');
+    test('ioFilesystem → io', () {
+      expect(TeardownCategory.ioFilesystem.area, 'io');
     });
 
-    test('ui categories', () {
-      expect(areaFromCategory('widget-lifecycle'), 'ui');
-      expect(areaFromCategory('ui-rebuild'), 'ui');
+    test('stateManagement → state', () {
+      expect(TeardownCategory.stateManagement.area, 'state');
     });
 
-    test('ffi categories', () {
-      expect(areaFromCategory('ffi-bridge'), 'ffi');
-      expect(areaFromCategory('bridge-call'), 'ffi');
+    test('configuration → config', () {
+      expect(TeardownCategory.configuration.area, 'config');
     });
 
-    test('unknown falls back to general', () {
-      expect(areaFromCategory('something-else'), 'general');
+    test('dataParsing → data', () {
+      expect(TeardownCategory.dataParsing.area, 'data');
+    });
+
+    test('general and other fall back to fix', () {
+      expect(TeardownCategory.general.area, 'fix');
+      expect(TeardownCategory.other.area, 'fix');
+    });
+  });
+
+  group('TeardownCategory.value', () {
+    test('each value matches expected skills.md string', () {
+      expect(TeardownCategory.apiIntegration.value,  'api-integration');
+      expect(TeardownCategory.concurrency.value,     'concurrency');
+      expect(TeardownCategory.configuration.value,   'configuration');
+      expect(TeardownCategory.dataParsing.value,     'data-parsing');
+      expect(TeardownCategory.ioFilesystem.value,    'io-filesystem');
+      expect(TeardownCategory.stateManagement.value, 'state-management');
+      expect(TeardownCategory.general.value,         'general');
+      expect(TeardownCategory.other.value,           'other');
+    });
+
+    test('other label is distinct from value', () {
+      expect(TeardownCategory.other.label, 'other (type manually)');
+      expect(TeardownCategory.other.value, 'other');
     });
   });
 
   group('buildCommitMessage', () {
     test('formats message without root cause', () {
-      final msg = buildCommitMessage('bloc', 'Widget does not update on state change.', '_Not yet determined._', 'Attached state listener');
-      expect(msg, startsWith('fix(bloc): Widget does not update on state change'));
-      expect(msg, contains('Attached state listener'));
+      final msg = buildCommitMessage('api', 'Response not parsed correctly.', '_Not yet determined._', 'Added null check on response body');
+      expect(msg, startsWith('fix(api): Response not parsed correctly'));
+      expect(msg, contains('Added null check on response body'));
       expect(msg, isNot(contains('Root cause')));
     });
 
     test('includes root cause when known', () {
-      final msg = buildCommitMessage('bloc', 'Widget does not update.', 'Listener not attached.', 'Fixed it');
-      expect(msg, contains('Root cause: Listener not attached'));
+      final msg = buildCommitMessage('io', 'File not written.', 'Directory not created first.', 'Fixed it');
+      expect(msg, contains('Root cause: Directory not created first'));
     });
   });
 
