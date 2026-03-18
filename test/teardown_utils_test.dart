@@ -221,6 +221,43 @@ _No sessions recorded yet._
     });
   });
 
+  group('extractPendingIssues', () {
+    test('returns empty list when section absent', () {
+      expect(extractPendingIssues('## Bug\nsome bug\n'), isEmpty);
+    });
+
+    test('returns empty list when section has no unchecked items', () {
+      const doc = '## Pending Issues\n\n_None recorded yet._\n';
+      expect(extractPendingIssues(doc), isEmpty);
+    });
+
+    test('returns unchecked items only', () {
+      const doc = '''## Pending Issues
+
+- [ ] First issue
+- [x] Already done
+- [ ] Second issue
+''';
+      expect(extractPendingIssues(doc), ['First issue', 'Second issue']);
+    });
+
+    test('trims whitespace from items', () {
+      const doc = '## Pending Issues\n\n- [ ]   spaced item   \n';
+      expect(extractPendingIssues(doc), ['spaced item']);
+    });
+  });
+
+  group('buildPendingIssuesSection', () {
+    test('returns placeholder for empty list', () {
+      expect(buildPendingIssuesSection([]), '_None recorded yet._');
+    });
+
+    test('builds unchecked checklist', () {
+      final result = buildPendingIssuesSection(['Bug A', 'Bug B']);
+      expect(result, '- [ ] Bug A\n- [ ] Bug B');
+    });
+  });
+
   group('archiveName', () {
     test('contains branch name with slashes replaced', () {
       final name = archiveName('fix/my-bug');

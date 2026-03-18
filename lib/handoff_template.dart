@@ -6,9 +6,13 @@ String handoffTemplate({
   required String projectName,
   String? files,
   String? entryPoints,
+  List<String>? pendingIssues,
 }) {
   final filesSection = files ?? '_Not yet determined._';
   final entryPointsSection = entryPoints ?? '_Not yet determined._';
+  final pendingSection = (pendingIssues != null && pendingIssues.isNotEmpty)
+      ? pendingIssues.map((i) => '- [ ] $i').join('\n')
+      : '_None recorded yet._';
 
   return '''# Agent Handoff — $projectName
 
@@ -84,6 +88,15 @@ _Nothing yet._
 ## Suggest Resume Notes
 
 _Nothing yet._
+
+---
+
+## Pending Issues
+
+> Other issues found during this session, not yet the active focus.
+> claudart rotate will seed the next handoff from the first unchecked item.
+
+$pendingSection
 ''';
 }
 
@@ -183,4 +196,13 @@ _Nothing yet._
 ## Suggest Resume Notes
 
 _Nothing yet._
+
+---
+
+## Pending Issues
+
+> Other issues found during this session, not yet the active focus.
+> claudart rotate will seed the next handoff from the first unchecked item.
+
+_None recorded yet._
 ''';

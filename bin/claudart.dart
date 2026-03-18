@@ -13,6 +13,7 @@ import '../lib/commands/report.dart';
 import '../lib/commands/scan.dart';
 import '../lib/commands/setup.dart';
 import '../lib/commands/status.dart';
+import '../lib/commands/rotate.dart';
 import '../lib/commands/teardown.dart';
 import '../lib/commands/unlink.dart';
 
@@ -32,6 +33,7 @@ Commands:
   status [--prompt]      Show current session state; --prompt outputs a compact colored string for shell RPROMPT/PS1
   teardown               Close session: update knowledge, archive handoff, suggest commit
   save                   Checkpoint session: snapshot handoff, deposit confirmed facts to skills
+  rotate                 Archive current session, run build gate, seed next handoff from Pending Issues
   kill                   Abandon session: archive handoff, remove symlink (no skills update)
   preflight <op>         Sync check before starting an operation (op: debug | save | test)
   scan [--scope lib|full|handoff] [--full]  Re-scan project for sensitive tokens
@@ -74,6 +76,8 @@ Future<void> main(List<String> args) async {
       await runTeardown();
     case 'save':
       await runSave();
+    case 'rotate':
+      await runRotate();
     case 'kill':
       await runKill();
     case 'preflight':

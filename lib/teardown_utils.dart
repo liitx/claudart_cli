@@ -1,4 +1,4 @@
-/// Pure logic extracted from teardown.dart for testability.
+// Pure logic extracted from teardown.dart for testability.
 
 String extractBranch(String content) {
   final match = RegExp(r'Branch: ([^\n|]+)').firstMatch(content);
@@ -78,4 +78,26 @@ String archiveName(String branch) {
   final date = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
   final safeBranch = branch.replaceAll('/', '_').replaceAll(' ', '_');
   return 'handoff_${safeBranch}_$date.md';
+}
+
+/// Returns the text of each unchecked `- [ ] …` item in the
+/// `## Pending Issues` section. Checked items (`- [x]`) are skipped.
+/// Returns empty list when the section is absent or has no unchecked items.
+List<String> extractPendingIssues(String handoff) {
+  final section = extractSection(handoff, 'Pending Issues');
+  if (section.isEmpty) return [];
+  return section
+      .split('\n')
+      .where((l) => l.trimLeft().startsWith('- [ ]'))
+      .map((l) => l.replaceFirst(RegExp(r'^\s*- \[ \]\s*'), '').trim())
+      .where((l) => l.isNotEmpty)
+      .toList();
+}
+
+/// Builds the body of a `## Pending Issues` section from a list of
+/// descriptions. Each item becomes an unchecked `- [ ] …` line.
+/// Returns the placeholder string when [issues] is empty.
+String buildPendingIssuesSection(List<String> issues) {
+  if (issues.isEmpty) return '_None recorded yet._';
+  return issues.map((i) => '- [ ] $i').join('\n');
 }

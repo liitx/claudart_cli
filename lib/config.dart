@@ -12,6 +12,11 @@ class WorkspaceConfig {
   final String? lastScan;
   final String? projectRoot;
 
+  /// Shell command run by `claudart rotate` after archiving the current
+  /// session, before seeding the next handoff. Must exit 0 to continue.
+  /// Defaults to `make rebuild` for self-hosted projects.
+  final String afterFixCommand;
+
   const WorkspaceConfig({
     this.sensitivityMode = false,
     this.scanScope = 'lib',
@@ -19,6 +24,7 @@ class WorkspaceConfig {
     this.diagnosticReporting = false,
     this.lastScan,
     this.projectRoot,
+    this.afterFixCommand = 'make rebuild',
   });
 
   factory WorkspaceConfig.fromJson(Map<String, dynamic> json) {
@@ -29,6 +35,7 @@ class WorkspaceConfig {
       diagnosticReporting: json['diagnosticReporting'] as bool? ?? false,
       lastScan: json['lastScan'] as String?,
       projectRoot: json['projectRoot'] as String?,
+      afterFixCommand: json['afterFixCommand'] as String? ?? 'make rebuild',
     );
   }
 
@@ -39,6 +46,7 @@ class WorkspaceConfig {
         'diagnosticReporting': diagnosticReporting,
         if (lastScan != null) 'lastScan': lastScan,
         if (projectRoot != null) 'projectRoot': projectRoot,
+        'afterFixCommand': afterFixCommand,
       };
 
   WorkspaceConfig copyWith({
@@ -48,6 +56,7 @@ class WorkspaceConfig {
     bool? diagnosticReporting,
     String? lastScan,
     String? projectRoot,
+    String? afterFixCommand,
   }) {
     return WorkspaceConfig(
       sensitivityMode: sensitivityMode ?? this.sensitivityMode,
@@ -56,6 +65,7 @@ class WorkspaceConfig {
       diagnosticReporting: diagnosticReporting ?? this.diagnosticReporting,
       lastScan: lastScan ?? this.lastScan,
       projectRoot: projectRoot ?? this.projectRoot,
+      afterFixCommand: afterFixCommand ?? this.afterFixCommand,
     );
   }
 }
@@ -69,13 +79,13 @@ WorkspaceConfig loadConfig({FileIO? io}) {
   try {
     final json = jsonDecode(raw) as Map<String, dynamic>;
     return WorkspaceConfig.fromJson(json);
-  } catch (_) {
+  } on FormatException {
     return const WorkspaceConfig();
   }
 }
 
 void saveConfig(WorkspaceConfig config, {FileIO? io}) {
   final fileIO = io ?? const RealFileIO();
-  final encoder = const JsonEncoder.withIndent('  ');
+  const encoder = JsonEncoder.withIndent('  ');
   fileIO.write(configPath, encoder.convert(config.toJson()));
 }
