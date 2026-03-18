@@ -24,8 +24,10 @@ void main() {
 
   group('testingTemplate', () {
     test('contains key headings', () {
-      expect(testingTemplate, contains('## Unit tests'));
-      expect(testingTemplate, contains('## Coverage'));
+      expect(testingTemplate, contains('## When a test is required'));
+      expect(testingTemplate, contains('## Coverage model'));
+      expect(testingTemplate, contains('## Enum test matrix rule'));
+      expect(testingTemplate, contains('## Injectable interfaces'));
     });
 
     test('does not contain Flutter-specific sections', () {
