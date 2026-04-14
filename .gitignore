@@ -2,7 +2,6 @@
 build/
 archive/
 pubspec.lock
-CLAUDE.md
 handoff.md
 skills.md
 coverage/
