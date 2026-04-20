@@ -61,28 +61,51 @@ dart compile exe ~/dev/claudart/bin/claudart.dart -o ~/bin/claudart
 
 ```mermaid
 sequenceDiagram
-    participant T as claudart CLI (your terminal)
-    participant IDE as IDE (VS Code / Cursor)
-    participant C as Claude Code
-    participant H as handoff.md
-    participant S as skills.md
+    participant T  as claudart CLI (terminal)
+    participant W  as workspace.json
+    participant SF as scaffold.md
+    participant IDE as IDE (VS Code · Cursor)
+    participant C  as Claude Code
+    participant H  as handoff.md
+    participant S  as skills.md
+    participant R  as README.md
 
-    T->>H: claudart setup — writes bug · scope · branch
-    Note over T,IDE: then open your editor
-    IDE->>C: /suggest
-    C-->>H: reads session context
-    C-->>S: reads relevant past patterns
-    C->>C: explores codebase within declared scope
-    C->>H: writes root cause — status → ready-for-debug
-    IDE->>C: /save
-    C-->>H: reads handoff for checkpoint → archive/
-    C->>S: deposits root cause to Pending
-    IDE->>C: /debug
-    C-->>H: preflight — status must be ready-for-debug ✓
-    C->>H: writes status → debug-in-progress
-    C->>C: implements scoped fix
-    T-->>H: claudart teardown — reads · archives · resets
-    T->>S: writes learnings — hot paths · patterns · anti-patterns
+    rect rgb(20, 40, 20)
+        Note over T,SF: Once per workspace — Agent 1
+        T->>W: claudart link — registers project, writes workspace.json
+        IDE->>C: /setup
+        C-->>W: reads owner · stack · role · knowledge scope
+        C->>SF: compiles scaffold.md — owner · proof notation · summarised knowledge
+    end
+
+    rect rgb(20, 20, 50)
+        Note over T,S: Per feature / bug — Agent 2
+        T->>H: claudart setup — writes bug · scope · branch
+        Note over T,IDE: open your editor
+
+        IDE->>C: /suggest
+        C-->>SF: inherits scaffold (owner · stack · patterns)
+        C-->>H: reads session state
+        C-->>S: reads feature-scoped learnings
+        C->>C: explores codebase within declared scope
+        C->>H: writes root cause — status → ready-for-debug
+        C->>S: appends discovered pattern to Pending
+
+        IDE->>C: /save
+        C-->>H: checkpoint → archive/
+        C->>S: confirms root cause in Pending
+
+        IDE->>C: /debug
+        C-->>SF: inherits scaffold
+        C-->>H: preflight — status must be ready-for-debug ✓
+        C->>H: status → debug-in-progress
+        C->>C: implements scoped fix — minimal diff
+
+        IDE->>C: /teardown
+        C-->>H: reads · archives · resets
+        C->>S: promotes feature learnings — Pending → Confirmed
+        C->>R: updates README sections [only if role == maintainer]
+    end
 ```
 
 ### claudart commands vs slash commands
@@ -513,7 +536,7 @@ graph LR
     subgraph commands["lib/commands/"]
         direction TB
         A["setup · save · kill · teardown\nlink · launch · preflight · status\ninit · unlink · scan · report · map"]
-        B["suggest_template · debug_template\nsave_template · teardown_template"]
+        B["setup_template · suggest_template · debug_template\nsave_template · teardown_template"]
     end
 
     subgraph session["lib/session/"]

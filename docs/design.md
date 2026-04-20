@@ -59,7 +59,7 @@ stateDiagram-v2
     ready_for_debug --> suggest_investigating : rotate\n[build gate ✓]
 
     debug_in_progress --> debug_in_progress : /save
-    debug_in_progress --> resolved           : teardown
+    debug_in_progress --> resolved           : /teardown
     debug_in_progress --> suggest_investigating : rotate\n[build gate ✓]
 
     resolved --> [*]
