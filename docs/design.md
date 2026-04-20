@@ -355,6 +355,58 @@ Total cost per command invocation: `O(n × |R|)` paid **once**, then `O(1)` per 
 
 ---
 
+## 8. WorkspaceConfig — Enum Invariants
+
+### Context window separation
+
+Let **K** be the set of all knowledge files in a workspace. Define two partitions:
+
+```
+K_scaffold  =  files compiled into scaffold.md by Agent 1 (/setup)
+K_session   =  files loaded per session by Agent 2 (/suggest, /debug)
+
+K_scaffold ∩ K_session = ∅     ← enforced by agent role separation
+K_scaffold ∪ K_session ⊆ K
+```
+
+**Proof:** Agent 2 reads `scaffold.md` — a single compiled file, not the originals. ∀ f ∈ K_scaffold: Agent 2 never opens f directly. The intersection is empty by construction. ∎
+
+### WorkspaceRole — README update gate
+
+```
+∀ workspace w: (w.project.role == WorkspaceRole.maintainer) ↔ (w.canUpdateReadme == true)
+```
+
+Enforced by `WorkspaceRole.canUpdateReadme` getter — a `switch` with no default. Adding a new role variant without handling it in `canUpdateReadme` is a compile error.
+
+### StackType — knowledge scope gate
+
+```
+∀ f ∈ K_scaffold: ∃ s ∈ workspace.project.stack such that f is relevant to s
+```
+
+Enforced at `/setup`: only files listed in `workspace.session.knowledge` are compiled into `scaffold.md`. Files outside that list are never loaded regardless of what exists on disk.
+
+### Enum parse invariant
+
+```
+∀ v ∈ workspace.json string values:
+  (v ∈ EnumType.validValues) → parsed into typed enum
+  (v ∉ EnumType.validValues) → dropped, reported as warning by /setup
+```
+
+`fromString` never throws — unknown values return `null` and are excluded from the parsed list. `/setup` reports them so the user can fix `workspace.json`.
+
+### Proof notation enforcement
+
+`ProofNotation.dartGrounded` requires:
+- `∀` / `∃` / `∧` / `∨` / `↔` as logical quantifiers in proofs
+- Both sides of `↔` must be Dart expressions (not prose)
+- `iff` is never used — `↔` with Dart expressions is the replacement
+- Every proof cites the Dart mechanism: `const` constructor, null-safety, exhaustive `switch`, `assert()`
+
+---
+
 ## Summary: The Three Invariants
 
 These are the core invariants claudart enforces. They are not conventions — they are compile-time or runtime proofs.
@@ -364,3 +416,5 @@ These are the core invariants claudart enforces. They are not conventions — th
 | I₁ | Every state transition is exhaustive | `missing_enum_constant_in_switch: error` | Compiler rejects missing arms |
 | I₂ | Every testable behavior has an assertion before session closes | `dart test --test-randomize-ordering-seed=random` + coverage model | `Gap = T − C = ∅` |
 | I₃ | No session n+1 begins unless session n's fix compiles | `rotate` build gate | `exitCode = 0` is the only path to new handoff |
+| I₄ | scaffold.md and session context are disjoint | Agent role separation — Agent 2 reads `scaffold.md`, never the originals | `K_scaffold ∩ K_session = ∅` by construction |
+| I₅ | README updates are gated on workspace ownership | `WorkspaceRole.canUpdateReadme` exhaustive switch | `(role == maintainer) ↔ (canUpdateReadme == true)` |

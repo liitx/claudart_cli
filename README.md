@@ -18,10 +18,15 @@ The two tools are completely separate. They communicate through a single shared 
 |---|---|---|
 | **What it is** | Dart CLI — compiled binary at `~/bin/claudart` | AI assistant built into your editor |
 | **Where you use it** | Terminal | IDE chat panel |
-| **What you type** | `claudart setup`, `claudart teardown` | `/suggest`, `/debug`, `/save` |
-| **What it manages** | Session state, workspace, skills, privacy | Codebase exploration, root cause, fix implementation |
+| **What you type** | `claudart setup`, `claudart teardown` | `/setup`, `/suggest`, `/debug`, `/save` |
+| **What it manages** | Session state, workspace config, skills, privacy | Workspace scaffold, exploration, fix implementation |
 | **Runs on** | Your machine only (`~/.claudart/`) | Anthropic servers — reads your abstracted context |
 | **IDE examples** | — | VS Code · Cursor · any Claude-integrated editor |
+
+claudart operates as **two distinct agents**:
+
+- **Agent 1 — `/setup`** runs once per workspace. Reads `workspace.json` (owner, stack, knowledge scope), compiles it into `scaffold.md` — a stable context file that every session inherits. Generic knowledge is baked in here, not re-read each session.
+- **Agent 2 — `/suggest`, `/debug`, `/save`, `/teardown`** runs per feature or bug. Inherits `scaffold.md`, loads only `handoff.md` + `skills.md` + the one feature-scoped doc the handoff references. Context window stays narrow and task-specific.
 
 ---
 
@@ -84,28 +89,29 @@ sequenceDiagram
 
 | | Terminal — claudart | IDE chat panel — Claude Code |
 |---|---|---|
+| Configure workspace | `claudart link` + edit `workspace.json` | `/setup` — compiles scaffold once |
 | Start session | `claudart setup` | — |
 | Explore & diagnose | — | `/suggest` |
 | Checkpoint | `claudart save` | `/save` (same operation) |
 | Implement fix | — | `/debug` |
-| End session | `claudart teardown` | — |
+| End session | `claudart teardown` | `/teardown` — promotes skills, updates README if maintainer |
 | Check state | `claudart status` | — |
 | Abandon session | `claudart kill` | — |
-| Register project | `claudart link` | — |
 
-> **`claudart` commands** run in your terminal. **`/suggest`, `/save`, `/debug`** are slash commands — type them in the Claude Code chat panel inside your editor.
+> **`claudart` commands** run in your terminal. **`/setup`, `/suggest`, `/save`, `/debug`, `/teardown`** are slash commands — type them in the Claude Code chat panel inside your editor.
 
 ---
 
 ## The workflow
 
-| Step | Command | Run in | What happens |
-|---|---|---|---|
-| 1 | `claudart setup` | Terminal | Describe the bug. claudart writes a structured `handoff.md` |
-| 2 | `/suggest` | Claude Code | Reads `handoff.md` + `skills.md`. Explores codebase. Confirms root cause. Sets status → `ready-for-debug` |
-| 3 | `/save` | Claude Code | Checkpoints handoff to `archive/`. Deposits root cause to `skills.md → Pending`. Session stays open |
-| 4 | `/debug` | Claude Code | Preflight check. Reads checkpointed handoff. Scoped fix — touches only what it declared |
-| 5 | `claudart teardown` | Terminal | Prompts for learnings. Writes hot paths, patterns, anti-patterns to `skills.md`. Archives handoff. Suggests commit message |
+| Step | Command | Agent | Run in | What happens |
+|---|---|---|---|---|
+| 0 | `/setup` | Agent 1 | Claude Code | Reads `workspace.json`. Compiles `scaffold.md` — owner, stack, proof notation, knowledge. Run once per workspace, re-run when `workspace.json` changes. |
+| 1 | `claudart setup` | — | Terminal | Describe the bug. claudart writes a structured `handoff.md` |
+| 2 | `/suggest` | Agent 2 | Claude Code | Inherits `scaffold.md`. Loads `handoff.md` + `skills.md` only. Explores codebase. Confirms root cause. Status → `ready-for-debug` |
+| 3 | `/save` | Agent 2 | Claude Code | Checkpoints handoff to `archive/`. Deposits root cause to `skills.md → Pending`. Session stays open |
+| 4 | `/debug` | Agent 2 | Claude Code | Preflight check. Reads checkpointed handoff. Scoped fix — touches only what it declared |
+| 5 | `/teardown` | Agent 2 | Claude Code | Promotes `skills.md` learnings. Updates `README.md` when `workspace.json` `role` is `maintainer`. Archives handoff. |
 
 `/save` is the required handshake between `/suggest` and `/debug`. It is the lock that prevents `/debug` from operating on stale or unconfirmed state.
 
@@ -166,6 +172,67 @@ The session has a typed status that both `/suggest` and `/debug` read and enforc
 | `claudart map` | Generate a human-readable token map |
 | `claudart report` | Show diagnostic summary |
 | `claudart report --file-issue` | File issues to GitHub automatically |
+
+</details>
+
+---
+
+<details>
+<summary><strong>Workspace configuration — workspace.json + typed enums</strong></summary>
+
+Each workspace has a `workspace.json` that defines the governing session model. Agent 1 (`/setup`) reads it and compiles `scaffold.md`. Session agents (Agent 2) read `scaffold.md` — never `workspace.json` directly.
+
+```json
+{
+  "owner": {
+    "name": "Aksana Buster",
+    "email": "ab@liitx.com",
+    "handle": "liitx"
+  },
+  "project": {
+    "name": "zedup",
+    "stack": ["dart"],
+    "repo": "https://github.com/liitx/zedup",
+    "role": "maintainer"
+  },
+  "session": {
+    "agents": ["setup", "suggest", "debug", "save", "teardown"],
+    "knowledge": ["dart_flutter", "testing", "enum-vs-variable", "git-authorship"],
+    "proofNotation": "dart-grounded",
+    "sensitivityMode": false
+  }
+}
+```
+
+All variant fields are parsed into typed enums by `lib/workspace/workspace_config.dart`. No command compares raw strings from this file.
+
+### Enum contracts
+
+#### `StackType`
+`dart` · `flutter` · `bloc` · `riverpod` · `typescript` · `react` · `swift` · `kotlin`
+
+Determines which generic knowledge files are relevant. `/setup` loads only files the stack declares.
+
+#### `AgentType`
+`setup` · `suggest` · `debug` · `save` · `teardown`
+
+Declares which slash commands are in scope for this workspace. Unknown values are dropped at parse time.
+
+#### `WorkspaceRole`
+`maintainer` · `contributor`
+
+**Invariant:** `(role == maintainer) ↔ (WorkspaceRole.canUpdateReadme == true)` — enforced at teardown. `contributor` workspaces skip README updates entirely; the README belongs to the repo owner.
+
+#### `ProofNotation`
+`dart-grounded` · `ts-grounded` · `generic`
+
+`dart-grounded`: use `∀`, `∃`, `∧`, `∨`, `↔` with Dart expressions. Never use `iff` — express bidirectional logic as `↔` with Dart on both sides. Every proof cites the Dart mechanism enforcing it (`const` constructor, null-safety, exhaustive `switch`, `assert()`).
+
+### scaffold.md
+
+`/setup` compiles all of the above into a single `scaffold.md` per workspace — owner identity, stack, proof notation, and summarised generic knowledge. Session agents load this once and do not re-read the originals. This keeps every session's context window narrow.
+
+Re-run `/setup` whenever `workspace.json` changes.
 
 </details>
 
@@ -462,6 +529,10 @@ graph LR
         I["abstractor\nreplace / restore"]
     end
 
+    subgraph workspace["lib/workspace/"]
+        W["workspace_config\nStackType · AgentType\nWorkspaceRole · ProofNotation"]
+    end
+
     subgraph core["lib/ — shared infrastructure"]
         J["file_io\ninjectable I/O interface"]
         K["registry\nproject index"]
@@ -471,9 +542,11 @@ graph LR
     bin --> commands
     commands --> session
     commands --> sensitivity
+    commands --> workspace
     commands --> core
     session --> core
     sensitivity --> core
+    workspace --> core
     D --> F
     E --> C
     I --> G
@@ -527,7 +600,9 @@ lib/
   assets/
     corpus.dart             ← bundled IDF weights for safe Dart/Flutter terms
 
-  config.dart               ← WorkspaceConfig read/write (config.json)
+  workspace/
+    workspace_config.dart   ← WorkspaceConfig parser; StackType, AgentType, WorkspaceRole, ProofNotation enums
+  config.dart               ← legacy per-workspace config (config.json)
   ignore_rules.dart         ← .claudartignore pattern matching
   file_io.dart              ← abstract FileIO + RealFileIO (testability)
   git_utils.dart            ← detectGitContext(): root + branch in one git call
@@ -549,6 +624,7 @@ lib/
 - Injectable parameters (`exitFn`, `confirmFn`, `pickFn`, `projectRootOverride`) on every command — prevents `exit()` from terminating the test process
 - Transactional session close in `session_ops.dart` — archive → reset → unlink with full rollback on any step failure
 - `HandoffStatus` enum — exhaustive switch enforcement catches unhandled statuses and typos at build time
+- `WorkspaceConfig` — `workspace.json` parsed into typed enums (`StackType`, `AgentType`, `WorkspaceRole`, `ProofNotation`); no command compares raw strings from the config file
 
 **346 tests. Zero warnings on `dart pub publish --dry-run`.**
 
@@ -564,6 +640,8 @@ lib/
   registry.json               ← index of all registered projects (name, root, workspace path)
 
   my-app/                     ← per-project workspace (created by claudart link)
+    workspace.json            ← governing session model: owner, stack, role, agents, knowledge scope
+    scaffold.md               ← compiled by /setup from workspace.json — inherited by all session agents
     handoff.md                ← current session state (reset each teardown)
     skills.md                 ← cross-session index: pending, hot paths, root causes, anti-patterns
     archive/                  ← every past session + checkpoints, timestamped
@@ -573,20 +651,25 @@ lib/
         bloc.md               ← BLoC patterns accumulated from real sessions
         riverpod.md           ← Riverpod patterns
         testing.md            ← testing patterns
+        enum-vs-variable.md   ← feature design decision + proof notation standard
+        git-authorship.md     ← commit attribution — tool is invisible, owner is the author
+        workspace-config.md   ← workspace.json schema and enum definitions
+        agent-architecture.md ← two-agent model: Agent 1 (setup) vs Agent 2 (session)
       projects/
         my-app.md             ← project-specific context and accumulated patterns
     token_map.json            ← [sensitivity mode] persistent abstract token map
-    config.json               ← per-workspace config (sensitivity mode, scan scope, etc.)
+    config.json               ← legacy per-workspace config (sensitivity mode, scan scope)
     logs/
       interactions.jsonl      ← per-command structured log (capped at 500 entries)
       errors.jsonl            ← error log with deduplication by fingerprint
       performance.md          ← scan timing and token counts
     .claude/
       commands/
-        suggest.md            ← /suggest slash command definition
-        debug.md              ← /debug slash command definition
-        save.md               ← /save slash command definition
-        teardown.md           ← /teardown slash command definition
+        setup.md              ← /setup slash command — Agent 1, compiles scaffold.md
+        suggest.md            ← /suggest slash command — Agent 2
+        debug.md              ← /debug slash command — Agent 2
+        save.md               ← /save slash command — Agent 2
+        teardown.md           ← /teardown slash command — Agent 2, updates README if maintainer
 ```
 
 The workspace is never inside a project. `claudart link` creates a `.claude` symlink from your project root to the workspace's `.claude/commands/` directory, making slash commands available in your editor.
