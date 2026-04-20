@@ -45,10 +45,10 @@ Write only patterns — no session narrative.
 
 ## Step 4 — Update README.md (maintainer only)
 
-Check `workspace.json` → `project.maintainer`.
+Check `workspace.json` → `project.role`.
 
 - `false` → skip this step entirely. This repo is not owned by the workspace owner. README updates are not permitted.
-- `true` → proceed.
+- `"maintainer"` → proceed.
 
 Read the project's `README.md` (at `<projectRoot>/README.md` from `workspace.json`).
 
