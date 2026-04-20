@@ -138,14 +138,22 @@ Future<void> runLink(
 
 void _ensureGitignore(String projectRoot, FileIO fileIO) {
   final path = p.join(projectRoot, '.gitignore');
-  final current = fileIO.read(path);
+  var current = fileIO.read(path);
   final lines = current.split('\n');
-  if (lines.any((l) => l.trim() == '.claude')) return;
-  final updated = current.isEmpty
-      ? '.claude\n'
-      : '${current.trimRight()}\n.claude\n';
-  fileIO.write(path, updated);
-  print('  .gitignore: added .claude');
+
+  final missing = <String>[
+    if (!lines.any((l) => l.trim() == '.claude'))  '.claude',
+    if (!lines.any((l) => l.trim() == '.cursor/')) '.cursor/',
+  ];
+
+  if (missing.isEmpty) return;
+
+  current = current.isEmpty
+      ? '${missing.join('\n')}\n'
+      : '${current.trimRight()}\n${missing.join('\n')}\n';
+
+  fileIO.write(path, current);
+  print('  .gitignore: added ${missing.join(', ')}');
 }
 
 bool _defaultConfirm(String question) {
