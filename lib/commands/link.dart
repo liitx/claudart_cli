@@ -5,6 +5,7 @@ import '../file_io.dart';
 import '../git_utils.dart';
 import '../paths.dart';
 import '../registry.dart';
+import 'setup_template.dart';
 import 'suggest_template.dart';
 import 'debug_template.dart';
 import 'save_template.dart';
@@ -114,6 +115,8 @@ Future<void> runLink(
   // 7b — Write suggest/debug/save templates to workspace .claude/commands/.
   // Always written so the workspace stays in sync regardless of symlink state.
   final workspaceCmdsDir = p.join(workspace, '.claude', 'commands');
+  fileIO.write(p.join(workspaceCmdsDir, 'setup.md'),
+      setupCommandTemplate(workspace));
   fileIO.write(p.join(workspaceCmdsDir, 'suggest.md'),
       suggestCommandTemplate(workspace));
   fileIO.write(p.join(workspaceCmdsDir, 'debug.md'),
