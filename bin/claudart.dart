@@ -190,7 +190,8 @@ String? _resolveClaudartSource() {
             .firstMatch(json.substring(nameMatch.start));
         if (rootMatch != null) {
           final rawUri   = rootMatch.group(1)!;
-          final rootPath = Uri.parse(rawUri).toFilePath();
+          // Resolve relative URIs (e.g. "../") against the config file's location.
+          final rootPath = configFile.uri.resolve(rawUri).toFilePath();
           final candidate = File('${rootPath}bin/claudart.dart');
           if (candidate.existsSync()) return candidate.path;
         }
