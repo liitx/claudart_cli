@@ -110,6 +110,12 @@ Future<void> runSetup({
 
   final bug = prompt_('1. What is the bug? (actual behavior)');
   final expected = prompt_('2. What should be happening? (expected behavior)');
+
+  if (bug == null || expected == null) {
+    print('\n✗ Setup requires an interactive terminal.');
+    exit_(1);
+  }
+
   final files = prompt_('3. Any files already in mind?', optional: true);
   final entryPoints = prompt_(
     '4. Any functions, classes, or entry points involved?',
@@ -141,8 +147,8 @@ Future<void> runSetup({
   var content = handoffTemplate(
     branch: branch,
     date: date,
-    bug: bug!,
-    expected: expected!,
+    bug: bug,
+    expected: expected,
     projectName: entry.name,
     files: files,
     entryPoints: entryPoints,

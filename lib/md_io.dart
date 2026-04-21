@@ -57,6 +57,7 @@ String? prompt(String question, {bool optional = false}) {
     if (optional) stdout.write(' (press enter to skip)');
     stdout.write('\n');
     final input = editor.readLine(optional: optional);
+    if (input == null && !optional) return null;  // EOF/non-TTY — can't prompt
     if (optional) return input?.isEmpty == true ? null : input;
     if (input != null && input.isNotEmpty) return input;
     // Non-optional and empty — re-prompt once with hint, don't recurse.

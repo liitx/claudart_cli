@@ -14,7 +14,8 @@ String? readLine({bool optional = false}) {
   stdout.write(_prompt);
   if (!stdin.hasTerminal) {
     final raw = stdin.readLineSync()?.trim();
-    if (raw == null || raw.isEmpty) return optional ? null : readLine(optional: optional);
+    if (raw == null) return null;   // EOF — stdin closed, don't recurse
+    if (raw.isEmpty) return optional ? null : readLine(optional: optional);
     return raw;
   }
   return _editLine(optional: optional);
