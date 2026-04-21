@@ -41,9 +41,12 @@ Commands:
   report [--file-issue]  Show diagnostic report; --file-issue files GitHub issues
   map                    Generate token_map.md from token_map.json
   experiment <name> -- <cmd> [args]  Run a command and tee output to experiments/<name>_<ts>.ansi
+  compile                Recompile the claudart binary and install it to ~/bin/claudart
+  version                Print the current claudart version
 
 Options:
-  -h, --help   Show this help message
+  -h, --help       Show this help message
+  --version        Print the current claudart version
 ''';
 
 Future<void> main(List<String> args) async {
@@ -119,9 +122,83 @@ Future<void> main(List<String> args) async {
       runMap(workspacePath: mapWorkspace);
     case 'experiment':
       await runExperiment(rest);
+    case 'compile':
+      exit(_compile());
+    case 'version':
+      print(claudartVersion);
     default:
       print('Unknown command: $command\n');
       print(_usage);
       exit(1);
   }
+}
+
+int _compile() {
+  final home = Platform.environment['HOME'] ?? '';
+  final out  = '$home/bin/claudart';
+  final src  = _resolveClaudartSource();
+
+  if (src == null) {
+    stderr.writeln(
+      'Cannot locate claudart source. Run from the claudart repo root:\n'
+      '  dart compile exe bin/claudart.dart -o \$HOME/bin/claudart',
+    );
+    return 1;
+  }
+
+  stdout.writeln('Compiling claudart → $out');
+  final result = Process.runSync('dart', ['compile', 'exe', src, '-o', out]);
+
+  stdout.write(result.stdout);
+  if (result.stderr.toString().trim().isNotEmpty) {
+    stderr.write(result.stderr);
+  }
+
+  if (result.exitCode != 0) {
+    stderr.writeln('Compile failed (exit ${result.exitCode})');
+    return result.exitCode;
+  }
+
+  stdout.writeln('Installed: $out');
+  return 0;
+}
+
+/// Locates bin/claudart.dart by walking up from the running executable,
+/// then falling back to .dart_tool/package_config.json.
+String? _resolveClaudartSource() {
+  // 1. Walk up from the executable.
+  var dir = File(Platform.resolvedExecutable).parent;
+  for (var i = 0; i < 6; i++) {
+    final candidate = File('${dir.path}/bin/claudart.dart');
+    if (candidate.existsSync()) return candidate.path;
+    final parent = dir.parent;
+    if (parent.path == dir.path) break;
+    dir = parent;
+  }
+
+  // 2. Read package_config.json for the claudart package root.
+  try {
+    final configFile = File(
+      '${Directory.current.path}/.dart_tool/package_config.json',
+    );
+    if (configFile.existsSync()) {
+      final json = configFile.readAsStringSync();
+      const nameKey = '"name":"claudart"';
+      final nameIdx = json.indexOf(nameKey);
+      if (nameIdx != -1) {
+        const rootKey = '"rootUri":"';
+        final rootIdx = json.indexOf(rootKey, nameIdx);
+        if (rootIdx != -1) {
+          final start   = rootIdx + rootKey.length;
+          final end     = json.indexOf('"', start);
+          final rawUri  = json.substring(start, end);
+          final rootPath = Uri.parse(rawUri).toFilePath();
+          final candidate = File('${rootPath}bin/claudart.dart');
+          if (candidate.existsSync()) return candidate.path;
+        }
+      }
+    }
+  } on Exception catch (_) {}
+
+  return null;
 }
