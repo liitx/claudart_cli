@@ -160,11 +160,22 @@ int _compile() {
   }
 
   stdout.writeln('Installed: $out');
+  // Persist source path so `claudart compile` works from any directory.
+  _saveSourcePath(File(src).parent.parent.path);
   return 0;
 }
 
+void _saveSourcePath(String repoRoot) {
+  try {
+    final dir = Directory('${Platform.environment['HOME']}/.config/claudart');
+    dir.createSync(recursive: true);
+    File('${dir.path}/source').writeAsStringSync(repoRoot);
+  } on Exception catch (_) {}
+}
+
 /// Locates bin/claudart.dart by walking up from the running executable,
-/// then falling back to .dart_tool/package_config.json.
+/// then falling back to .dart_tool/package_config.json,
+/// then to ~/.config/claudart/source (written on first successful compile).
 String? _resolveClaudartSource() {
   // 1. Walk up from the executable.
   var dir = File(Platform.resolvedExecutable).parent;
@@ -196,6 +207,17 @@ String? _resolveClaudartSource() {
           if (candidate.existsSync()) return candidate.path;
         }
       }
+    }
+  } on Exception catch (_) {}
+
+  // 3. Persisted path from last successful compile.
+  try {
+    final saved = File('${Platform.environment['HOME']}/.config/claudart/source')
+        .readAsStringSync()
+        .trim();
+    if (saved.isNotEmpty) {
+      final candidate = File('$saved/bin/claudart.dart');
+      if (candidate.existsSync()) return candidate.path;
     }
   } on Exception catch (_) {}
 
