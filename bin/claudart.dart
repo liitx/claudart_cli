@@ -183,15 +183,13 @@ String? _resolveClaudartSource() {
     );
     if (configFile.existsSync()) {
       final json = configFile.readAsStringSync();
-      const nameKey = '"name":"claudart"';
-      final nameIdx = json.indexOf(nameKey);
-      if (nameIdx != -1) {
-        const rootKey = '"rootUri":"';
-        final rootIdx = json.indexOf(rootKey, nameIdx);
-        if (rootIdx != -1) {
-          final start   = rootIdx + rootKey.length;
-          final end     = json.indexOf('"', start);
-          final rawUri  = json.substring(start, end);
+      // Match both compact ("name":"claudart") and spaced ("name": "claudart") JSON.
+      final nameMatch = RegExp(r'"name"\s*:\s*"claudart"').firstMatch(json);
+      if (nameMatch != null) {
+        final rootMatch = RegExp(r'"rootUri"\s*:\s*"([^"]+)"')
+            .firstMatch(json.substring(nameMatch.start));
+        if (rootMatch != null) {
+          final rawUri   = rootMatch.group(1)!;
           final rootPath = Uri.parse(rawUri).toFilePath();
           final candidate = File('${rootPath}bin/claudart.dart');
           if (candidate.existsSync()) return candidate.path;
