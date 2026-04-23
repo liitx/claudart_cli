@@ -6,6 +6,7 @@
 export 'paths.dart' show handoffFileName, skillsFileName, archivesDirName, archiveIndexFileName, parseWorkspaceDirFromStatusOutput;
 export 'pipeline/agent_model.dart';
 export 'pipeline/agent_flow.dart';
+export 'pipeline/step_status.dart';
 export 'pipeline/pipeline_event.dart';
 export 'pipeline/agent_step.dart';
 export 'pipeline/flows/suggest_steps.dart';
