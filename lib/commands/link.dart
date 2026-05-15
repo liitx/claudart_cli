@@ -1,6 +1,8 @@
 import 'dart:io';
 import '../ui/line_editor.dart' as editor;
 import 'package:path/path.dart' as p;
+import 'package:zedup/zedup.dart' as zedup;
+import '../claudart_link_resolver.dart';
 import '../file_io.dart';
 import '../git_utils.dart';
 import '../paths.dart';
@@ -144,7 +146,53 @@ Future<void> runLink(
   }
   print('  Cursor    : $cursorCmdsLink → $workspaceCmdsDir');
   if (sensitivityMode) print('  Sensitivity mode: ON');
+
+  // 9 — Emit the zedup typed projection + flow chart at the linked workspace.
+  // ClaudartLinkResolver routes zedup's codegen to <workspace>/zedup/...
+  // so consumers can resolve typed metadata via the link, not the profile dir.
+  // Best-effort: a codegen failure does not block linking. Re-runnable via
+  // `zedup regen` once that command lands.
+  try {
+    final resolver = ClaudartLinkResolver();
+    final profile = zedup.ZedProfile.fromGithubUser(_inferOwnerFromRoot(projectRoot)) ??
+        zedup.ZedProfile.values.first;
+    final config = zedup.ConfigStore(resolver: resolver).load(profile) ??
+        const zedup.ZedupConfig();
+    final emitter = zedup.ProjectionEmitter(resolver: resolver);
+    final flowEmitter = zedup.FlowChartEmitter(resolver: resolver);
+    final projectionPath = emitter.emit(config, profile);
+    final flowPath = flowEmitter.emit(zedup.allZedupFsmSpecs(), profile);
+    print('  Zedup     : $projectionPath');
+    print('              $flowPath');
+  } on Object catch (e) {
+    print('  Zedup     : codegen skipped — ${e.runtimeType}');
+  }
+
   print('\nRun `claudart setup` to begin a session.\n');
+}
+
+/// Best-effort owner detection from a git remote at [projectRoot]. Returns
+/// an empty string when no usable owner is found — caller falls back to
+/// the first ZedProfile.
+String _inferOwnerFromRoot(String projectRoot) {
+  try {
+    final result = Process.runSync(
+      'git',
+      ['remote', 'get-url', 'origin'],
+      workingDirectory: projectRoot,
+    );
+    if (result.exitCode != 0) return '';
+    final url = (result.stdout as String).trim();
+    if (url.startsWith('https://github.com/')) {
+      final parts = url.substring('https://github.com/'.length).split('/');
+      return parts.isNotEmpty ? parts[0] : '';
+    }
+    if (url.startsWith('git@github.com:')) {
+      final parts = url.substring('git@github.com:'.length).split('/');
+      return parts.isNotEmpty ? parts[0] : '';
+    }
+  } on Exception catch (_) {}
+  return '';
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

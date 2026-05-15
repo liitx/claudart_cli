@@ -13,6 +13,8 @@ executables:
 dependencies:
   args: ^2.5.0
   path: ^1.8.0
+  zedup:
+    path: ../zedup
 
 dev_dependencies:
   lints: ^6.1.0
