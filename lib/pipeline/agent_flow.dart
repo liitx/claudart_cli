@@ -94,6 +94,14 @@ enum AgentFlow {
     preferredModel:  null,
     steps:           [],
     hasCommandFile:  false,
+  ),
+
+  /// Visual design review + spec generation. Routed by the planner when
+  /// the scoped paths classify as design surfaces (widgets/painters/theme).
+  guiDesign(
+    preferredModel:  AgentModel.sonnet,
+    steps:           [],
+    hasCommandFile:  false,
   );
 
   const AgentFlow({
@@ -147,6 +155,7 @@ enum AgentFlow {
         AgentFlow.research => '',
         AgentFlow.free     => '',
         AgentFlow.cli      => '',
+        AgentFlow.guiDesign => '',
       };
 
   // ── Serialisation ────────────────────────────────────────────────────────────
