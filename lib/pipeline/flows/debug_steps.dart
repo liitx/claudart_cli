@@ -13,7 +13,6 @@ import 'package:path/path.dart' as p;
 import '../agent_model.dart';
 import '../agent_step.dart';
 import '../pipeline_context.dart';
-import '../pipeline_slot.dart';
 
 abstract final class DebugSteps {
   static const String _readerSystem =

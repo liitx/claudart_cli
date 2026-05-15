@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:path/path.dart' as p;
 import '../file_io.dart';
 import '../git_utils.dart';
 import '../md_io.dart';
