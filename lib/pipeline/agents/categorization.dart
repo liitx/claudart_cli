@@ -27,18 +27,21 @@ enum AgentCategory {
   bug,       // defect investigation / repair
   refactor,  // structural improvement without behaviour change
   research,  // knowledge extraction / reference lookup
-  setup;     // workspace or environment configuration
+  setup,     // workspace or environment configuration
+  gui;       // visual surface — widgets, painters, theme tokens
 
   /// Intent classes valid for this category.
   ///
   /// Invariant: feature.intents ∩ {IntentClass.document} = ∅
   /// Invariant: research.intents ∩ {IntentClass.implement} = ∅
+  /// Invariant: gui.intents ⊆ {analyze, implement, design}
   Set<IntentClass> get intents => switch (this) {
         feature  => {IntentClass.explore, IntentClass.analyze, IntentClass.implement},
         bug      => {IntentClass.explore, IntentClass.analyze},
         refactor => {IntentClass.analyze, IntentClass.implement},
         research => {IntentClass.explore, IntentClass.document},
         setup    => {IntentClass.implement, IntentClass.document},
+        gui      => {IntentClass.analyze, IntentClass.implement, IntentClass.design},
       };
 }
 
@@ -49,7 +52,8 @@ enum IntentClass {
   explore,    // broad codebase or knowledge discovery
   analyze,    // reasoning over known, bounded context
   implement,  // code generation or modification
-  document;   // structured output — reference, glossary, report
+  document,   // structured output — reference, glossary, report
+  design;     // visual surface review / spec generation
 }
 
 /// How broadly the task affects the codebase.
@@ -95,4 +99,7 @@ AgentModel routeModel(
       // Atomic exploration and all documentation → fast lookup tier.
       (_, IntentClass.explore,   _)                         => AgentModel.haiku,
       (_, IntentClass.document,  _)                         => AgentModel.haiku,
+
+      // Visual design — balanced reasoning for spec generation at any tier.
+      (_, IntentClass.design,    _)                         => AgentModel.sonnet,
     };
