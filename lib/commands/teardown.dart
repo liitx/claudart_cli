@@ -110,13 +110,13 @@ Future<void> runTeardown({
     displayTotal: 1,
   );
 
-  final _out           = analyzerCtx[TeardownSteps.slotKey] ?? '';
-  final agentCategory  = tagOrNull(_out, 'CATEGORY')           ?? '';
-  final agentSummary   = tagOrNull(_out, 'FIX_SUMMARY')        ?? '';
-  final agentHotFiles  = tagOrNull(_out, 'HOT_FILES');
-  final agentColdFiles = tagOrNull(_out, 'COLD_FILES');
-  final agentRootPat   = tagOrNull(_out, 'ROOT_CAUSE_PATTERN') ?? '';
-  final agentFixPat    = tagOrNull(_out, 'FIX_PATTERN')        ?? '';
+  final analyzerOut           = analyzerCtx[TeardownSteps.slotKey] ?? '';
+  final agentCategory  = tagOrNull(analyzerOut, 'CATEGORY')           ?? '';
+  final agentSummary   = tagOrNull(analyzerOut, 'FIX_SUMMARY')        ?? '';
+  final agentHotFiles  = tagOrNull(analyzerOut, 'HOT_FILES');
+  final agentColdFiles = tagOrNull(analyzerOut, 'COLD_FILES');
+  final agentRootPat   = tagOrNull(analyzerOut, 'ROOT_CAUSE_PATTERN') ?? '';
+  final agentFixPat    = tagOrNull(analyzerOut, 'FIX_PATTERN')        ?? '';
 
   // ── Archive kind ─────────────────────────────────────────────────────────────
 
