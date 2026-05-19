@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:io';
 import '../file_io.dart';
 import '../git_utils.dart';
+import '../logging/planner_log.dart';
 import '../paths.dart';
 import '../pipeline/agents/categorization.dart';
 import '../pipeline/agents/model_selection_agent.dart';
@@ -28,9 +29,11 @@ Future<void> runFlow({
   String? projectRootOverride,
   Never Function(int code)? exitFn,
   PipelineExecutor? executor,
+  PlannerLog? plannerLog,
 }) async {
   final fileIO = io   ?? const RealFileIO();
   final exit_  = exitFn ?? exit;
+  final planner = plannerLog ?? PlannerLog();
 
   // ── Locate project ─────────────────────────────────────────────────────────
 
@@ -168,6 +171,11 @@ Future<void> runFlow({
     displayTotal: 3,
   );
 
+  // Record the planner's routing decision to ~/.claudart/planner.jsonl.
+  // Skips silently when the categorize step's output is malformed —
+  // logging never blocks the flow.
+  _recordClassification(ctx, planner);
+
   // Phase 2: plan (sonnet) — approval gate (approve / refine / exit)
   ctx = await _runPhase2(resolvedExec, ctx, checkpointPath, exit_);
 
@@ -180,6 +188,25 @@ Future<void> runFlow({
   );
 
   await _writeHandoff(ctx, workspace, fileIO, exit_);
+}
+
+// ── Planner-log helper ────────────────────────────────────────────────────────
+
+/// Parses the categorize step's output and appends one JSONL record to
+/// the planner log. No-op when the output is malformed (missing tag or
+/// unknown enum variant) — logging is best-effort, never blocks the flow.
+void _recordClassification(PipelineContext ctx, PlannerLog planner) {
+  final raw = ctx[PipelineSlot.categorize] ?? '';
+  if (raw.isEmpty) return;
+  // ScopeFile is a (relative, absolute) record. The path heuristic cares
+  // about the relative path (which matches what test stubs assert against).
+  final scopedPaths = ctx.files.map((f) => f.relative).toList();
+  final decision = PlannerDecision.fromCategorizeOutput(
+    raw,
+    designSurfaceCounts: planner.tallySurfaces(scopedPaths),
+  );
+  if (decision == null) return;
+  planner.record(decision);
 }
 
 // ── Phase 2 helper ────────────────────────────────────────────────────────────

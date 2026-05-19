@@ -35,6 +35,101 @@ void main() {
     }
   });
 
+  group('PlannerDecision.fromCategorizeOutput', () {
+    const tally = <DesignSurface, int>{};
+    final fixedNow = DateTime(2026, 5, 19, 12);
+
+    test('parses a well-formed classification block', () {
+      const raw = '''
+<CATEGORY>feature</CATEGORY>
+<INTENT>explore</INTENT>
+<COMPLEXITY>compound</COMPLEXITY>
+<MODEL>sonnet</MODEL>
+''';
+      final decision = PlannerDecision.fromCategorizeOutput(
+        raw,
+        designSurfaceCounts: tally,
+        now: () => fixedNow,
+      );
+      expect(decision, isNotNull);
+      expect(decision!.category, equals(AgentCategory.feature));
+      expect(decision.intent, equals(IntentClass.explore));
+      expect(decision.complexity, equals(ComplexityTier.compound));
+      expect(decision.model, equals(AgentModel.sonnet));
+      expect(decision.timestamp, equals(fixedNow));
+    });
+
+    test('is case-insensitive (Sonnet vs sonnet)', () {
+      const raw = '''
+<CATEGORY>Feature</CATEGORY>
+<INTENT>Explore</INTENT>
+<COMPLEXITY>Compound</COMPLEXITY>
+<MODEL>Sonnet</MODEL>
+''';
+      final decision = PlannerDecision.fromCategorizeOutput(
+        raw,
+        designSurfaceCounts: tally,
+      );
+      expect(decision, isNotNull);
+      expect(decision!.model, equals(AgentModel.sonnet));
+    });
+
+    test('returns null when a required tag is missing', () {
+      const raw = '''
+<CATEGORY>feature</CATEGORY>
+<INTENT>explore</INTENT>
+<COMPLEXITY>compound</COMPLEXITY>
+''';
+      expect(
+        PlannerDecision.fromCategorizeOutput(
+          raw,
+          designSurfaceCounts: tally,
+        ),
+        isNull,
+      );
+    });
+
+    test('returns null when a tag maps to an unknown enum variant', () {
+      const raw = '''
+<CATEGORY>feature</CATEGORY>
+<INTENT>explore</INTENT>
+<COMPLEXITY>compound</COMPLEXITY>
+<MODEL>gpt-9</MODEL>
+''';
+      expect(
+        PlannerDecision.fromCategorizeOutput(
+          raw,
+          designSurfaceCounts: tally,
+        ),
+        isNull,
+      );
+    });
+
+    test('full round-trip: parser → record → JSONL', () {
+      const raw = '''
+<CATEGORY>bug</CATEGORY>
+<INTENT>analyze</INTENT>
+<COMPLEXITY>atomic</COMPLEXITY>
+<MODEL>haiku</MODEL>
+''';
+      final lines = <String>[];
+      final log = PlannerLog(
+        path: '/tmp/planner.jsonl',
+        appender: (_, line) => lines.add(line),
+      );
+      final decision = PlannerDecision.fromCategorizeOutput(
+        raw,
+        designSurfaceCounts: log.tallySurfaces(const ['lib/widgets/x.dart']),
+      );
+      expect(decision, isNotNull);
+      log.record(decision!);
+      final decoded = jsonDecode(lines.single) as Map<String, dynamic>;
+      expect(decoded['category'], equals('bug'));
+      expect(decoded['model'], equals('haiku'));
+      expect((decoded['surfaces'] as Map)['widget'], equals(1));
+    });
+  });
+
   test('PlannerLog.record emits a JSONL line via the injected appender', () {
     final lines = <String>[];
     final log = PlannerLog(

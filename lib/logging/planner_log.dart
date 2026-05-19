@@ -13,6 +13,14 @@ import '../pipeline/agent_model.dart';
 import '../pipeline/agents/categorization.dart';
 import '../pipeline/agents/path_heuristic.dart';
 
+/// XML tag names emitted by the categorize step. Lives at the top of the
+/// module so the parser and any future consumer reference a single source
+/// for the tag wire-format.
+const String _kCategoryTag    = 'CATEGORY';
+const String _kIntentTag      = 'INTENT';
+const String _kComplexityTag  = 'COMPLEXITY';
+const String _kModelTag       = 'MODEL';
+
 class PlannerDecision {
   const PlannerDecision({
     required this.timestamp,
@@ -47,7 +55,75 @@ class PlannerDecision {
         },
         if (note != null) 'note': note,
       };
+
+  /// Parses the categorize step's raw output (XML-tagged classification)
+  /// into a typed [PlannerDecision]. Returns null when any required tag is
+  /// missing or maps to an unknown enum variant — callers skip logging
+  /// rather than crash the flow.
+  ///
+  /// Expected input shape (whitespace tolerated):
+  /// ```
+  /// <CATEGORY>feature</CATEGORY>
+  /// <INTENT>explore</INTENT>
+  /// <COMPLEXITY>compound</COMPLEXITY>
+  /// <MODEL>sonnet</MODEL>
+  /// ```
+  static PlannerDecision? fromCategorizeOutput(
+    String raw, {
+    required Map<DesignSurface, int> designSurfaceCounts,
+    AgentFlow flow = AgentFlow.flow,
+    String? note,
+    DateTime Function() now = _systemNow,
+  }) {
+    final category = _enumByName(AgentCategory.values, _tagValue(raw, _kCategoryTag));
+    final intent = _enumByName(IntentClass.values, _tagValue(raw, _kIntentTag));
+    final complexity =
+        _enumByName(ComplexityTier.values, _tagValue(raw, _kComplexityTag));
+    final model = _enumByName(AgentModel.values, _tagValue(raw, _kModelTag));
+    if (category == null ||
+        intent == null ||
+        complexity == null ||
+        model == null) {
+      return null;
+    }
+    return PlannerDecision(
+      timestamp: now(),
+      flow: flow,
+      category: category,
+      intent: intent,
+      complexity: complexity,
+      model: model,
+      designSurfaceCounts: designSurfaceCounts,
+      note: note,
+    );
+  }
 }
+
+/// Extracts the inner text of the first `<TAG>...</TAG>` pair, or null
+/// when the tag isn't present. Used by [PlannerDecision.fromCategorizeOutput]
+/// to parse the categorize step's XML-style output without pulling in a
+/// full XML library.
+String? _tagValue(String body, String tag) {
+  final match = RegExp(
+    '<$tag>\\s*(.*?)\\s*</$tag>',
+    dotAll: true,
+  ).firstMatch(body);
+  return match?.group(1);
+}
+
+/// Looks up an enum variant by [Enum.name]. Case-insensitive comparison
+/// since the LLM may capitalize ('Sonnet' vs 'sonnet'). Returns null
+/// when [name] is null or doesn't match any variant.
+T? _enumByName<T extends Enum>(List<T> values, String? name) {
+  if (name == null) return null;
+  final lower = name.toLowerCase();
+  for (final value in values) {
+    if (value.name.toLowerCase() == lower) return value;
+  }
+  return null;
+}
+
+DateTime _systemNow() => DateTime.now();
 
 class PlannerLog {
   PlannerLog({String? path, this.appender = _defaultAppend})
