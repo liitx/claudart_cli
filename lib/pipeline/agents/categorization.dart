@@ -53,6 +53,58 @@ enum CategorizeTag {
     final content = tagOrNullIgnoreCase(rawOutput, wireTag);
     return (content == null || content.isEmpty) ? null : content;
   }
+
+  /// The set of values the LLM may emit inside this tag. Drawn from the
+  /// target enum's `.values` so renaming a variant on any axis
+  /// propagates into the categorize prompt automatically — closing the
+  /// prompt/parser drift seam that silently defeats `ComplexityTier`
+  /// routing when the two get out of sync.
+  ///
+  /// Exhaustive switch — adding a CategorizeTag variant forces a new
+  /// arm here at compile time.
+  List<String> get allowedValues => switch (this) {
+        CategorizeTag.category   =>
+          [for (final v in AgentCategory.values) v.name],
+        CategorizeTag.intent     =>
+          [for (final v in IntentClass.values) v.name],
+        CategorizeTag.complexity =>
+          [for (final v in ComplexityTier.values) v.name],
+        CategorizeTag.model      =>
+          [for (final v in AgentModel.values) v.name],
+      };
+}
+
+/// Assembles the categorize step's system prompt from the enum
+/// taxonomy. Listing the tag names + allowed values explicitly tells
+/// the LLM exactly what wire format to emit, AND keeps the prompt
+/// structurally in sync with the parser via `CategorizeTag.values`.
+///
+/// Without this seam closed (slice 5 of the planner audit), an enum
+/// rename produces silent fallback to sonnet for every task — the
+/// LLM emits the old variant name, parsing fails, and PR #24's
+/// `ComplexityTier`-driven routing is bypassed.
+String buildCategorizePrompt() {
+  // Each schema line is itself valid XML — `<TAG>one of: …</TAG>` —
+  // so the LLM sees the actual wire format (open tag, content, close
+  // tag) it must mirror at output time. The previous "<TAG>: v1, v2"
+  // shape risked the model echoing the colon/no-closing-tag schema
+  // line literally instead of producing a parseable `<TAG>v1</TAG>`.
+  final schemaLines = [
+    for (final tag in CategorizeTag.values)
+      '<${tag.wireTag}>one of: ${tag.allowedValues.join(', ')}'
+          '</${tag.wireTag}>',
+  ].join('\n');
+  // Tag count derives from `.values.length` so adding a CategorizeTag
+  // variant updates the user-facing instruction automatically.
+  final tagCount = CategorizeTag.values.length;
+  return 'You are a precise task classifier. Classify the user input '
+      'into exactly one value per axis below and emit each as an XML '
+      'tag with matching open + close.\n\n'
+      'Schema (mirror this exact wire format, substituting one value '
+      'from each list):\n'
+      '$schemaLines\n\n'
+      'Output only the $tagCount XML tags — no prose, no markdown, '
+      'no commentary outside the tags.';
 }
 
 // ── Axes ──────────────────────────────────────────────────────────────────────

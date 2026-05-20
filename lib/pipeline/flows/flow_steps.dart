@@ -28,11 +28,17 @@ import '../route_tag.dart';
 import '../step_route.dart';
 
 abstract final class FlowSteps {
-  static const String _categorizeSystem =
-      'You are a precise task classifier. Classify the user input into exactly '
-      'one AgentCategory (feature/bug/refactor/research/setup), one IntentClass '
-      '(explore/analyze/implement/document), and one ComplexityTier '
-      '(atomic/compound/systemic). Output only the four XML tags — no prose.';
+  /// Built once at class load from the categorize taxonomy
+  /// (`CategorizeTag.values` × each tag's `.allowedValues`) so a
+  /// rename of any enum variant — `AgentCategory.feature` →
+  /// `AgentCategory.featureWork`, or adding `IntentClass.review` —
+  /// propagates into the LLM-facing prompt without manual edits.
+  ///
+  /// Closes the prompt/parser drift seam that silently defeats
+  /// `ComplexityTier`-driven model routing (slice 5 of the planner
+  /// audit). `static final` (not `const`) because the builder reads
+  /// each enum's `.values`.
+  static final String _categorizeSystem = buildCategorizePrompt();
 
   static const String _planSystem =
       'You are a dependency-ordered planner. Given a classified task, generate '
