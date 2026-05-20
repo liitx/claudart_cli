@@ -12,6 +12,7 @@ import '../pipeline/agent_flow.dart';
 import '../pipeline/agent_model.dart';
 import '../pipeline/agents/categorization.dart';
 import '../pipeline/agents/path_heuristic.dart';
+import '../pipeline/xml_tags.dart';
 
 /// XML tag names emitted by the categorize step. Lives at the top of the
 /// module so the parser and any future consumer reference a single source
@@ -20,6 +21,15 @@ const String _kCategoryTag    = 'CATEGORY';
 const String _kIntentTag      = 'INTENT';
 const String _kComplexityTag  = 'COMPLEXITY';
 const String _kModelTag       = 'MODEL';
+
+/// Stderr line emitted when [PlannerLog.record] throws (disk full, perms,
+/// missing parent dir). Production callers swallow the exception and emit
+/// this line so the flow continues — planner logging is best-effort and
+/// must never block the categorize step.
+///
+/// Exposed as a const so production and tests reference the same string.
+const String plannerLogRecordFailureWarning =
+    'planner_log: record failed; continuing flow (best-effort logging).';
 
 class PlannerDecision {
   const PlannerDecision({
@@ -75,11 +85,11 @@ class PlannerDecision {
     String? note,
     DateTime Function() now = _systemNow,
   }) {
-    final category = _enumByName(AgentCategory.values, _tagValue(raw, _kCategoryTag));
-    final intent = _enumByName(IntentClass.values, _tagValue(raw, _kIntentTag));
+    final category = _enumByName(AgentCategory.values, tagOrNull(raw, _kCategoryTag));
+    final intent = _enumByName(IntentClass.values, tagOrNull(raw, _kIntentTag));
     final complexity =
-        _enumByName(ComplexityTier.values, _tagValue(raw, _kComplexityTag));
-    final model = _enumByName(AgentModel.values, _tagValue(raw, _kModelTag));
+        _enumByName(ComplexityTier.values, tagOrNull(raw, _kComplexityTag));
+    final model = _enumByName(AgentModel.values, tagOrNull(raw, _kModelTag));
     if (category == null ||
         intent == null ||
         complexity == null ||
@@ -99,18 +109,6 @@ class PlannerDecision {
   }
 }
 
-/// Extracts the inner text of the first `<TAG>...</TAG>` pair, or null
-/// when the tag isn't present. Used by [PlannerDecision.fromCategorizeOutput]
-/// to parse the categorize step's XML-style output without pulling in a
-/// full XML library.
-String? _tagValue(String body, String tag) {
-  final match = RegExp(
-    '<$tag>\\s*(.*?)\\s*</$tag>',
-    dotAll: true,
-  ).firstMatch(body);
-  return match?.group(1);
-}
-
 /// Looks up an enum variant by [Enum.name]. Case-insensitive comparison
 /// since the LLM may capitalize ('Sonnet' vs 'sonnet'). Returns null
 /// when [name] is null or doesn't match any variant.
@@ -123,7 +121,10 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) {
   return null;
 }
 
-DateTime _systemNow() => DateTime.now();
+/// Default clock for planner records. UTC so JSONL streams from
+/// different machines or timezones sort and diff cleanly. Matches the
+/// convention used by `SessionLogger` and downstream analytics.
+DateTime _systemNow() => DateTime.now().toUtc();
 
 class PlannerLog {
   PlannerLog({String? path, this.appender = _defaultAppend})
