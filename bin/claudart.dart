@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:claudart/git_utils.dart';
+import 'package:claudart/pipeline/debug_mode.dart';
 import 'package:claudart/version.dart';
 import 'package:claudart/registry.dart';
 import 'package:claudart/commands/archives.dart';
@@ -54,9 +55,25 @@ Commands:
 Options:
   -h, --help       Show this help message
   --version        Print the current claudart version
+  --debug          Write per-step trace (system prompt, message, token
+                   counts, cost) to \$CLAUDART_DEBUG_PATH (default
+                   /tmp/claudart_debug.log). Same effect as setting
+                   CLAUDART_DEBUG=1.
 ''';
 
-Future<void> main(List<String> args) async {
+Future<void> main(List<String> rawArgs) async {
+  // Strip top-level option flags (`--debug`, …) before command dispatch
+  // so subcommand arg parsing doesn't see them. `--debug` is repeatable
+  // / position-independent — anywhere in argv enables it.
+  final args = <String>[];
+  for (final arg in rawArgs) {
+    if (arg == '--debug') {
+      setDebugEnabled(true);
+      continue;
+    }
+    args.add(arg);
+  }
+
   if (args.firstOrNull == '-h' || args.firstOrNull == '--help') {
     print(_usage);
     exit(0);
