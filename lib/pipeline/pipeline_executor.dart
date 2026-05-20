@@ -186,7 +186,8 @@ class PipelineExecutor {
           current = stepMap[returnToStepId]!;
 
         case ApprovalGate(:final planTag, :final nextStepId):
-          final plan = tagOrNull(result.text, planTag) ?? result.text;
+          final plan =
+              tagOrNull(result.text, planTag.wireTag) ?? result.text;
           yield PlanDraft(plan: plan);
           yield const AwaitingApproval();
 

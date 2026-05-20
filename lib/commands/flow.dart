@@ -17,6 +17,7 @@ import '../pipeline/agents/categorization.dart';
 import '../pipeline/agents/model_selection_agent.dart';
 import '../pipeline/flows/flow_steps.dart';
 import '../pipeline/pipeline_context.dart';
+import '../pipeline/route_tag.dart';
 import '../pipeline/pipeline_executor.dart';
 import '../pipeline/xml_tags.dart';
 import '../registry.dart';
@@ -262,7 +263,8 @@ Future<void> _writeHandoff(
   FileIO                fileIO,
   Never Function(int)   exit_,
 ) async {
-  final handoffContent = tagOrNull(ctx[PipelineSlot.construct] ?? '', 'HANDOFF');
+  final handoffContent =
+      tagOrNull(ctx[PipelineSlot.construct] ?? '', RouteTag.handoff.wireTag);
   if (handoffContent == null || handoffContent.isEmpty) {
     print(
       '\n  ${ansi.red}✗${ansi.reset}  Construct step produced no handoff.\n'
