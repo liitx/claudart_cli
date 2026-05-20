@@ -1,9 +1,10 @@
 // agent_step_test.dart — AgentStep.effectiveModel contract.
 //
-// Three rows:
-//   - no selector → falls back to `model`
-//   - selector returns AgentModel → that wins
-//   - selector returns null → falls back to `model`
+// Two rows:
+//   - no selector → returns the static `model`
+//   - selector wired → its return value wins (selector is total —
+//     `AgentModel Function(ctx)`, not nullable, so there is no
+//     "selector returns null" branch to test)
 //
 // Pure unit tests — no pipeline executor, no LLM.
 
@@ -46,18 +47,6 @@ void main() {
       expect(step.effectiveModel(_ctx()), equals(AgentModel.haiku));
     });
 
-    test('selector returns null → falls back to `model`', () {
-      final step = AgentStep(
-        id: 'a',
-        label: 'Step A',
-        model: AgentModel.sonnet,
-        modelSelector: (_) => null,
-        systemPrompt: 'sys',
-        buildPrompt: (_) => 'msg',
-      );
-      expect(step.effectiveModel(_ctx()), equals(AgentModel.sonnet));
-    });
-
     test('selector receives the ctx passed to effectiveModel', () {
       PipelineContext? captured;
       final step = AgentStep(
@@ -66,7 +55,7 @@ void main() {
         model: AgentModel.sonnet,
         modelSelector: (ctx) {
           captured = ctx;
-          return null;
+          return AgentModel.haiku;
         },
         systemPrompt: 'sys',
         buildPrompt: (_) => 'msg',

@@ -87,7 +87,7 @@ abstract final class FlowSteps {
   /// categorize step's output and consults the τ matrix
   /// (`routeModel`) for the right model. Falls back to sonnet when
   /// any tag is missing or maps to an unknown enum variant.
-  static AgentModel? _planModelSelector(PipelineContext ctx) =>
+  static AgentModel _planModelSelector(PipelineContext ctx) =>
       modelForCategorizeOutput(
         ctx[PipelineSlot.categorize] ?? '',
         fallback: _planFallbackModel,

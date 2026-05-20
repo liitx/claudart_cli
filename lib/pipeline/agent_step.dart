@@ -7,13 +7,17 @@
 //   - which XML tag in the output triggers which route
 //
 // Model selection:
-//   - `model` is the fallback when no [modelSelector] is provided, or
-//     when the selector returns null.
+//   - `model` is the static choice used when [modelSelector] is unset
+//     (most steps — categorize, clarify, construct, etc.).
 //   - [modelSelector] is the dynamic hook — the executor calls it once
 //     per step with the current [PipelineContext] so the categorize
-//     step's classification can drive downstream model choice. See
-//     `agents/categorization.dart` for [modelForCategorizeOutput],
-//     the canonical selector used by the plan step.
+//     step's classification can drive downstream model choice. The
+//     selector contract is *total*: it must return an [AgentModel],
+//     not null. Selectors that want fallback behaviour on malformed
+//     input embed it themselves (see [modelForCategorizeOutput]'s
+//     required `fallback:` parameter) — keeping the fallback at the
+//     selector site rather than in [effectiveModel] eliminates the
+//     "silent fall through to step.model" drift seam.
 //
 // Routing:
 //   routes is empty  → no branching; executor proceeds to next step in list
@@ -27,17 +31,22 @@ import 'pipeline_context.dart';
 import 'route_tag.dart';
 import 'step_route.dart';
 
-/// Resolves a step's model from the current [PipelineContext]. Return
-/// `null` to fall through to [AgentStep.model]. Pure — no IO.
-typedef ModelSelector = AgentModel? Function(PipelineContext ctx);
+/// Resolves a step's model from the current [PipelineContext]. Total
+/// — must return an [AgentModel]. Selectors that need a fallback for
+/// malformed context embed it themselves (see
+/// [modelForCategorizeOutput]'s required `fallback:` parameter). Pure
+/// — no IO.
+typedef ModelSelector = AgentModel Function(PipelineContext ctx);
 
 class AgentStep {
   final String id;
   final String label;
 
-  /// Fallback model used when [modelSelector] is unset or returns null.
-  /// Steps that don't need dynamic routing leave [modelSelector] null
-  /// and read this directly.
+  /// Static model used when [modelSelector] is unset. Steps that
+  /// don't need dynamic routing leave [modelSelector] null and read
+  /// this directly. Selectors, when present, are total — they own
+  /// their own fallback semantics, so this field is *not* consulted
+  /// once a selector is wired.
   final AgentModel model;
 
   final String systemPrompt;
@@ -68,8 +77,9 @@ class AgentStep {
   });
 
   /// Resolves the model the executor should invoke for this step given
-  /// [ctx]. Honors [modelSelector] when present; falls through to
-  /// [model] when the selector is unset or returns null.
+  /// [ctx]. Honors [modelSelector] when present; otherwise returns
+  /// [model]. The `??` here only fires for "no selector wired" — the
+  /// selector itself is total and cannot return null (see typedef).
   AgentModel effectiveModel(PipelineContext ctx) =>
       modelSelector?.call(ctx) ?? model;
 }
