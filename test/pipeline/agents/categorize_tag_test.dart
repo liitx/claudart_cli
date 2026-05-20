@@ -35,6 +35,20 @@ void main() {
     });
   });
 
+  group('CategorizeTag.extractFrom normalizes empty content to null', () {
+    for (final tag in CategorizeTag.values) {
+      test('${tag.name} with empty body returns null', () {
+        final raw = '<${tag.wireTag}></${tag.wireTag}>';
+        expect(tag.extractFrom(raw), isNull);
+      });
+
+      test('${tag.name} with whitespace-only body returns null', () {
+        final raw = '<${tag.wireTag}>   \n  </${tag.wireTag}>';
+        expect(tag.extractFrom(raw), isNull);
+      });
+    }
+  });
+
   group('CategorizeTag.extractFrom — round-trip per variant', () {
     for (final tag in CategorizeTag.values) {
       test('${tag.name} extracts its own tagged content', () {

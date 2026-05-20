@@ -43,10 +43,15 @@ enum CategorizeTag {
         CategorizeTag.model      => 'MODEL',
       };
 
-  /// Extracts the trimmed content of this tag from [rawOutput], or null
-  /// when absent or empty.
-  String? extractFrom(String rawOutput) =>
-      tagOrNullIgnoreCase(rawOutput, wireTag);
+  /// Extracts the trimmed content of this tag from [rawOutput]. Returns
+  /// null when the tag is absent OR when its content is whitespace-only
+  /// — `<CATEGORY></CATEGORY>` is treated identically to a missing tag
+  /// so downstream `_enumByName` lookups don't have to special-case the
+  /// empty string.
+  String? extractFrom(String rawOutput) {
+    final content = tagOrNullIgnoreCase(rawOutput, wireTag);
+    return (content == null || content.isEmpty) ? null : content;
+  }
 }
 
 // ── Axes ──────────────────────────────────────────────────────────────────────

@@ -1,21 +1,31 @@
 // xml_tags.dart — XML tag extraction utilities for agent output parsing.
 //
 // Pipeline steps output structured XML tags. These functions extract
-// content between `<TAG>` and `</TAG>` by direct string scan — no
-// regex, no compiled patterns, no allocation overhead per call. Pure
+// content between `<TAG>` and `</TAG>` by direct string scan — avoids
+// the regex engine; the operation is `indexOf` + `substring`. Pure
 // functions, no side effects.
 //
-// Two parsers:
-//   tagOr            — case-sensitive; returns a fallback when absent.
-//   tagOrNull        — case-sensitive; returns null when absent.
-//   tagOrNullIgnoreCase — tag-name is matched case-insensitively for
-//                         LLM-emitted output that may not honor the
-//                         system prompt's UPPER_SNAKE_CASE convention.
+// Three parsers:
+//   tagOr               — case-sensitive; returns a fallback when absent.
+//   tagOrNull           — case-sensitive; returns null when absent.
+//   tagOrNullIgnoreCase — tag-name matched case-insensitively for
+//                          LLM-emitted output that may not honor the
+//                          system prompt's UPPER_SNAKE_CASE convention.
 //
 // The captured content is whitespace-trimmed but otherwise verbatim —
 // the caller normalizes the value.
+//
+// Unicode safety: the case-insensitive path uses an ASCII-only fold
+// (`A`..`Z` → `a`..`z`, everything else passes through unchanged) so
+// the folded string preserves code-unit indices 1:1 with [text]. This
+// matters because indices found in the folded haystack are reused to
+// slice [text]; a length-changing fold (Dart's `toLowerCase()` can
+// expand chars like Turkish `İ`) would corrupt the slice boundary.
 
 const String _kDefaultFallback = '_Not determined._';
+const int _kCodeUnitA = 0x41;
+const int _kCodeUnitZ = 0x5A;
+const int _kAsciiCaseBit = 0x20;
 
 /// Extracts the trimmed content between `<TAG>` and `</TAG>` in [text].
 /// Returns [fallback] when the tag is absent. Case-sensitive.
@@ -27,22 +37,21 @@ String? tagOrNull(String text, String tag) =>
     _extractTag(text, tag, caseInsensitive: false);
 
 /// Case-insensitive variant. Use this for LLM-emitted output where
-/// the tag name's case is unreliable.
+/// the tag name's case is unreliable. Tag names are matched via an
+/// ASCII-only fold so non-ASCII content in [text] passes through
+/// without shifting slice indices.
 String? tagOrNullIgnoreCase(String text, String tag) =>
     _extractTag(text, tag, caseInsensitive: true);
 
 /// Single tag-extraction primitive. Scans [text] for `<tag>...</tag>`
-/// via [String.indexOf], skipping the regex engine entirely.
-///
-/// When [caseInsensitive] is true the haystack + needles are folded
-/// to lower-case once before searching; the captured substring is
-/// sliced from the original [text] so the returned value preserves
-/// the producer's case.
+/// via [String.indexOf]. When [caseInsensitive] is true, both
+/// haystack and needles are ASCII-folded so indices stay 1:1 with
+/// [text] (see header comment for the Unicode-safety rationale).
 String? _extractTag(String text, String tag, {required bool caseInsensitive}) {
-  final haystack = caseInsensitive ? text.toLowerCase() : text;
-  final openNeedle = caseInsensitive ? '<${tag.toLowerCase()}>' : '<$tag>';
-  final closeNeedle =
-      caseInsensitive ? '</${tag.toLowerCase()}>' : '</$tag>';
+  final haystack = caseInsensitive ? _asciiLowerFold(text) : text;
+  final openTag = caseInsensitive ? _asciiLowerFold(tag) : tag;
+  final openNeedle = '<$openTag>';
+  final closeNeedle = '</$openTag>';
 
   final openIndex = haystack.indexOf(openNeedle);
   if (openIndex < 0) return null;
@@ -52,4 +61,23 @@ String? _extractTag(String text, String tag, {required bool caseInsensitive}) {
   if (closeIndex < 0) return null;
 
   return text.substring(contentStart, closeIndex).trim();
+}
+
+/// ASCII-only lower-case fold. Each code unit in [s] is mapped:
+/// `'A'`..`'Z'` → `'a'`..`'z'` by setting the case bit; every other
+/// code unit (including non-ASCII chars and existing lower-case
+/// letters) passes through unchanged.
+///
+/// Unlike [String.toLowerCase] this is length-preserving — the result
+/// has the same number of code units as [s], so an `indexOf` hit in
+/// the fold corresponds to the same index in [s].
+String _asciiLowerFold(String s) {
+  final out = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    final c = s.codeUnitAt(i);
+    out.writeCharCode(
+      (c >= _kCodeUnitA && c <= _kCodeUnitZ) ? c | _kAsciiCaseBit : c,
+    );
+  }
+  return out.toString();
 }
