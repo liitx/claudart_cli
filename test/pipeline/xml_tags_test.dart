@@ -73,10 +73,10 @@ void main() {
       );
     });
 
-    test('mismatched open/close case still matches (regex is per-side)', () {
-      // Each side of the regex is independently case-insensitive — a
-      // `<CATEGORY>...</category>` would also match. Documents the
-      // tolerance level.
+    test('mismatched open/close case still matches', () {
+      // Both delimiters are folded independently — `<CATEGORY>...</category>`
+      // matches because the haystack is folded once before searching for
+      // each needle. Documents the tolerance level.
       expect(
         tagOrNullIgnoreCase('<CATEGORY>feature</category>', 'CATEGORY'),
         equals('feature'),
@@ -92,6 +92,50 @@ void main() {
         tagOrNullIgnoreCase('<x>HelloWorld</x>', 'X'),
         equals('HelloWorld'),
       );
+    });
+  });
+
+  // ── Unicode safety — ASCII-only fold preserves slice indices ─────────────
+  //
+  // Dart's `String.toLowerCase()` can change code-unit length on certain
+  // chars (Turkish dotless İ → i̇). The implementation uses an ASCII-only
+  // fold so non-ASCII content in the haystack passes through unchanged
+  // and slice boundaries stay aligned. These rows cover the failure modes
+  // a naive `toLowerCase()` implementation would hit.
+
+  group('tagOrNullIgnoreCase preserves slice indices through non-ASCII', () {
+    test('non-ASCII inside tag content is preserved verbatim', () {
+      const content = 'résumé — café';
+      const raw = '<NOTE>$content</NOTE>';
+      expect(tagOrNullIgnoreCase(raw, 'NOTE'), equals(content));
+    });
+
+    test('Turkish dotted I in surrounding prose does not shift indices', () {
+      // Turkish İ would expand under default toLowerCase. Keeping it in
+      // prose around the tag and confirming the extracted value is
+      // exactly what's between the delimiters proves the fold is
+      // length-preserving.
+      const content = 'value';
+      const raw = 'note İstanbul <T>$content</T> trailing İ';
+      expect(tagOrNullIgnoreCase(raw, 'T'), equals(content));
+    });
+
+    test('surrogate pair in tag content is preserved', () {
+      // Emoji are surrogate pairs — two code units per character.
+      const content = 'fire 🔥 hot';
+      const raw = '<X>$content</X>';
+      expect(tagOrNullIgnoreCase(raw, 'X'), equals(content));
+    });
+  });
+
+  // ── Empty-content semantics ───────────────────────────────────────────────
+
+  group('whitespace-only content trims to empty string', () {
+    test('tagOrNull returns empty string when content is only whitespace', () {
+      // Documents the contract: trim() is applied; result may be ''.
+      // Callers that want null-for-empty must normalize themselves
+      // (see CategorizeTag.extractFrom).
+      expect(tagOrNull('<X>   \n  </X>', 'X'), equals(''));
     });
   });
 }
