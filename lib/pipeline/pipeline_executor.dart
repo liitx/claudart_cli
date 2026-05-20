@@ -364,8 +364,8 @@ Future<({String text, Usage usage})?> _defaultClaudeRunner({
   final log = _diagLog;
   log?.writeAsStringSync(
     '[$ts] STEP: ${model.alias}  workingDir: $workingDir\n'
-    '--- SYSTEM PROMPT ---\n$systemPrompt\n'
-    '--- MESSAGE (first 2000 chars) ---\n${message.substring(0, message.length.clamp(0, 2000))}\n'
+    '--- SYSTEM PROMPT (${systemPrompt.length} bytes) ---\n$systemPrompt\n'
+    '--- MESSAGE (${message.length} bytes, full) ---\n$message\n'
     '--- END INPUT ---\n\n',
     mode: FileMode.append,
   );
@@ -418,10 +418,24 @@ Future<({String text, Usage usage})?> _defaultClaudeRunner({
     final text  = (json['result'] as String?) ?? '';
     final raw   = json['usage']   as Map<String, dynamic>? ?? {};
     final usage = Usage(
-      input:     (raw['input_tokens']            as int?)    ?? 0,
-      output:    (raw['output_tokens']           as int?)    ?? 0,
-      cacheRead: (raw['cache_read_input_tokens'] as int?)    ?? 0,
-      cost:      (json['total_cost_usd']         as num?)?.toDouble() ?? 0,
+      input:         (raw['input_tokens']                as int?) ?? 0,
+      output:        (raw['output_tokens']               as int?) ?? 0,
+      cacheRead:     (raw['cache_read_input_tokens']     as int?) ?? 0,
+      cacheCreation: (raw['cache_creation_input_tokens'] as int?) ?? 0,
+      cost: (json['total_cost_usd'] as num?)?.toDouble() ?? 0,
+    );
+    // Per-step summary appended to the diag log when CLAUDART_DIAG=1.
+    // Tracks system-prompt bytes + message bytes + the parsed usage so a
+    // reader can correlate the harness overhead with what we actually
+    // sent. See pipeline/flows/flow_steps.dart for prompt sources.
+    log?.writeAsStringSync(
+      '[$ts] SUMMARY: model=${model.alias}  '
+      'sysBytes=${systemPrompt.length}  msgBytes=${message.length}  '
+      'in=${usage.input}  cached=${usage.cacheRead}  '
+      'cacheWrite=${usage.cacheCreation}  out=${usage.output}  '
+      '\$${usage.cost.toStringAsFixed(4)}\n'
+      '[$ts] OUTPUT-TEXT-BYTES: ${text.length}\n\n',
+      mode: FileMode.append,
     );
     return (text: text, usage: usage);
   } on Exception catch (e) {
