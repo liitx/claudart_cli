@@ -15,6 +15,7 @@
 //   AgentCategory.research.intents ∩ {IntentClass.implement} = ∅
 //   ComplexityTier.atomic ∩ ComplexityTier.systemic = ∅  (disjoint tiers)
 
+import '../../util/enum_util.dart';
 import '../agent_model.dart';
 import '../xml_tags.dart';
 
@@ -46,7 +47,7 @@ enum CategorizeTag {
   /// Extracts the trimmed content of this tag from [rawOutput]. Returns
   /// null when the tag is absent OR when its content is whitespace-only
   /// — `<CATEGORY></CATEGORY>` is treated identically to a missing tag
-  /// so downstream `_enumByName` lookups don't have to special-case the
+  /// so downstream `enumByName` lookups don't have to special-case the
   /// empty string.
   String? extractFrom(String rawOutput) {
     final content = tagOrNullIgnoreCase(rawOutput, wireTag);
@@ -155,15 +156,15 @@ AgentModel modelForCategorizeOutput(
   required AgentModel fallback,
 }) {
   if (rawOutput.isEmpty) return fallback;
-  final category = _enumByName(
+  final category = enumByName(
     AgentCategory.values,
     CategorizeTag.category.extractFrom(rawOutput),
   );
-  final intent = _enumByName(
+  final intent = enumByName(
     IntentClass.values,
     CategorizeTag.intent.extractFrom(rawOutput),
   );
-  final complexity = _enumByName(
+  final complexity = enumByName(
     ComplexityTier.values,
     CategorizeTag.complexity.extractFrom(rawOutput),
   );
@@ -173,13 +174,7 @@ AgentModel modelForCategorizeOutput(
   return routeModel(category, intent, complexity);
 }
 
-/// Case-insensitive lookup by [Enum.name]. The LLM may capitalize
-/// (`'Sonnet'` vs `'sonnet'`) so we normalize before matching.
-T? _enumByName<T extends Enum>(List<T> values, String? name) {
-  if (name == null) return null;
-  final lower = name.toLowerCase();
-  for (final value in values) {
-    if (value.name.toLowerCase() == lower) return value;
-  }
-  return null;
-}
+// `enumByName` lives in `lib/util/enum_util.dart`. Local
+// reimplementation here would defeat slice 2's dedupe and is a
+// constraint violation per the planner audit. Import + use the
+// canonical helper.
