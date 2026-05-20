@@ -17,9 +17,9 @@ String _buildOutput({
   required String intent,
   required String complexity,
 }) =>
-    '<$kCategorizeCategoryTag>$category</$kCategorizeCategoryTag>\n'
-    '<$kCategorizeIntentTag>$intent</$kCategorizeIntentTag>\n'
-    '<$kCategorizeComplexityTag>$complexity</$kCategorizeComplexityTag>\n';
+    '<${CategorizeTag.category.wireTag}>$category</${CategorizeTag.category.wireTag}>\n'
+    '<${CategorizeTag.intent.wireTag}>$intent</${CategorizeTag.intent.wireTag}>\n'
+    '<${CategorizeTag.complexity.wireTag}>$complexity</${CategorizeTag.complexity.wireTag}>\n';
 
 void main() {
   group('modelForCategorizeOutput — happy path routes via routeModel', () {
@@ -78,10 +78,10 @@ void main() {
 
     test('missing CATEGORY tag returns fallback', () {
       final raw =
-          '<$kCategorizeIntentTag>${IntentClass.explore.name}'
-          '</$kCategorizeIntentTag>\n'
-          '<$kCategorizeComplexityTag>${ComplexityTier.atomic.name}'
-          '</$kCategorizeComplexityTag>\n';
+          '<${CategorizeTag.intent.wireTag}>${IntentClass.explore.name}'
+          '</${CategorizeTag.intent.wireTag}>\n'
+          '<${CategorizeTag.complexity.wireTag}>${ComplexityTier.atomic.name}'
+          '</${CategorizeTag.complexity.wireTag}>\n';
       expect(
         modelForCategorizeOutput(raw, fallback: _fallback),
         equals(_fallback),
@@ -90,10 +90,10 @@ void main() {
 
     test('missing INTENT tag returns fallback', () {
       final raw =
-          '<$kCategorizeCategoryTag>${AgentCategory.feature.name}'
-          '</$kCategorizeCategoryTag>\n'
-          '<$kCategorizeComplexityTag>${ComplexityTier.atomic.name}'
-          '</$kCategorizeComplexityTag>\n';
+          '<${CategorizeTag.category.wireTag}>${AgentCategory.feature.name}'
+          '</${CategorizeTag.category.wireTag}>\n'
+          '<${CategorizeTag.complexity.wireTag}>${ComplexityTier.atomic.name}'
+          '</${CategorizeTag.complexity.wireTag}>\n';
       expect(
         modelForCategorizeOutput(raw, fallback: _fallback),
         equals(_fallback),
@@ -102,10 +102,10 @@ void main() {
 
     test('missing COMPLEXITY tag returns fallback', () {
       final raw =
-          '<$kCategorizeCategoryTag>${AgentCategory.feature.name}'
-          '</$kCategorizeCategoryTag>\n'
-          '<$kCategorizeIntentTag>${IntentClass.explore.name}'
-          '</$kCategorizeIntentTag>\n';
+          '<${CategorizeTag.category.wireTag}>${AgentCategory.feature.name}'
+          '</${CategorizeTag.category.wireTag}>\n'
+          '<${CategorizeTag.intent.wireTag}>${IntentClass.explore.name}'
+          '</${CategorizeTag.intent.wireTag}>\n';
       expect(
         modelForCategorizeOutput(raw, fallback: _fallback),
         equals(_fallback),
@@ -159,10 +159,10 @@ void main() {
 
   group('modelForCategorizeOutput — tag-VALUE case insensitivity', () {
     test('mixed-case enum names match (LLM may capitalize)', () {
-      const raw =
-          '<$kCategorizeCategoryTag>Feature</$kCategorizeCategoryTag>\n'
-          '<$kCategorizeIntentTag>Explore</$kCategorizeIntentTag>\n'
-          '<$kCategorizeComplexityTag>Atomic</$kCategorizeComplexityTag>\n';
+      final raw =
+          '<${CategorizeTag.category.wireTag}>Feature</${CategorizeTag.category.wireTag}>\n'
+          '<${CategorizeTag.intent.wireTag}>Explore</${CategorizeTag.intent.wireTag}>\n'
+          '<${CategorizeTag.complexity.wireTag}>Atomic</${CategorizeTag.complexity.wireTag}>\n';
       expect(
         modelForCategorizeOutput(raw, fallback: _fallback),
         equals(AgentModel.haiku),
@@ -170,10 +170,10 @@ void main() {
     });
 
     test('upper-case enum names match', () {
-      const raw =
-          '<$kCategorizeCategoryTag>FEATURE</$kCategorizeCategoryTag>\n'
-          '<$kCategorizeIntentTag>EXPLORE</$kCategorizeIntentTag>\n'
-          '<$kCategorizeComplexityTag>ATOMIC</$kCategorizeComplexityTag>\n';
+      final raw =
+          '<${CategorizeTag.category.wireTag}>FEATURE</${CategorizeTag.category.wireTag}>\n'
+          '<${CategorizeTag.intent.wireTag}>EXPLORE</${CategorizeTag.intent.wireTag}>\n'
+          '<${CategorizeTag.complexity.wireTag}>ATOMIC</${CategorizeTag.complexity.wireTag}>\n';
       expect(
         modelForCategorizeOutput(raw, fallback: _fallback),
         equals(AgentModel.haiku),

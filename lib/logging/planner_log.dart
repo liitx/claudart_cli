@@ -12,14 +12,11 @@ import '../pipeline/agent_flow.dart';
 import '../pipeline/agent_model.dart';
 import '../pipeline/agents/categorization.dart';
 import '../pipeline/agents/path_heuristic.dart';
-import '../pipeline/xml_tags.dart';
 
-// Categorize step's XML tag names are defined once in
-// `lib/pipeline/agents/categorization.dart` as
-// kCategorizeCategoryTag / IntentTag / ComplexityTag / ModelTag —
-// imported above. Don't redefine private aliases here; drift between
-// the planner log and the route resolver would let cost-routing
-// disagree with what gets recorded.
+// Categorize step's XML tags live as a closed enum (`CategorizeTag`)
+// in `lib/pipeline/agents/categorization.dart`. The planner log calls
+// `CategorizeTag.<variant>.extractFrom(raw)` so the wire format is
+// defined once and any rename is a compile-time matrix update.
 
 /// Stderr line emitted when [PlannerLog.record] throws (disk full, perms,
 /// missing parent dir). Production callers swallow the exception and emit
@@ -84,24 +81,24 @@ class PlannerDecision {
     String? note,
     DateTime Function() now = _systemNow,
   }) {
-    // Case-insensitive tag lookup — the LLM may emit `<category>` or
-    // mixed case despite the system prompt requesting upper. See
-    // [tagOrNullIgnoreCase] in xml_tags.dart.
+    // Each variant of CategorizeTag knows its wire-format name and
+    // applies the case-insensitive lookup itself — the LLM may emit
+    // lower-case tags despite the system prompt requesting upper.
     final category = _enumByName(
       AgentCategory.values,
-      tagOrNullIgnoreCase(raw, kCategorizeCategoryTag),
+      CategorizeTag.category.extractFrom(raw),
     );
     final intent = _enumByName(
       IntentClass.values,
-      tagOrNullIgnoreCase(raw, kCategorizeIntentTag),
+      CategorizeTag.intent.extractFrom(raw),
     );
     final complexity = _enumByName(
       ComplexityTier.values,
-      tagOrNullIgnoreCase(raw, kCategorizeComplexityTag),
+      CategorizeTag.complexity.extractFrom(raw),
     );
     final model = _enumByName(
       AgentModel.values,
-      tagOrNullIgnoreCase(raw, kCategorizeModelTag),
+      CategorizeTag.model.extractFrom(raw),
     );
     if (category == null ||
         intent == null ||

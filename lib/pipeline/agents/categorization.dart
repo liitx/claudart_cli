@@ -18,15 +18,36 @@
 import '../agent_model.dart';
 import '../xml_tags.dart';
 
-/// XML tag names emitted by the categorize step. Single source — the
-/// planner log and the route resolver both reference these consts so
-/// a rename never drifts. Tag-name lookups are case-insensitive via
-/// [tagOrNullIgnoreCase] since the LLM may not honor the system
-/// prompt's upper-case convention.
-const String kCategorizeCategoryTag   = 'CATEGORY';
-const String kCategorizeIntentTag     = 'INTENT';
-const String kCategorizeComplexityTag = 'COMPLEXITY';
-const String kCategorizeModelTag      = 'MODEL';
+/// Closed set of XML tags emitted by the categorize step. One enum
+/// variant per slot, each carrying its wire-format tag name via
+/// [wireTag]. Single source — planner log + route resolver + any
+/// future consumer reference variants, not loose strings, so renaming
+/// the wire format is one switch arm change.
+///
+/// Tag-name extraction is case-insensitive via [tagOrNullIgnoreCase]
+/// because the LLM may not honor the system prompt's UPPER_SNAKE_CASE
+/// convention.
+enum CategorizeTag {
+  category,
+  intent,
+  complexity,
+  model;
+
+  /// Wire-format tag name as emitted by the categorize system prompt.
+  /// Exhaustive switch — adding a variant is a compile error until the
+  /// arm is filled in.
+  String get wireTag => switch (this) {
+        CategorizeTag.category   => 'CATEGORY',
+        CategorizeTag.intent     => 'INTENT',
+        CategorizeTag.complexity => 'COMPLEXITY',
+        CategorizeTag.model      => 'MODEL',
+      };
+
+  /// Extracts the trimmed content of this tag from [rawOutput], or null
+  /// when absent or empty.
+  String? extractFrom(String rawOutput) =>
+      tagOrNullIgnoreCase(rawOutput, wireTag);
+}
 
 // ── Axes ──────────────────────────────────────────────────────────────────────
 
@@ -129,12 +150,18 @@ AgentModel modelForCategorizeOutput(
   required AgentModel fallback,
 }) {
   if (rawOutput.isEmpty) return fallback;
-  final category =
-      _enumByName(AgentCategory.values, tagOrNullIgnoreCase(rawOutput, kCategorizeCategoryTag));
-  final intent =
-      _enumByName(IntentClass.values, tagOrNullIgnoreCase(rawOutput, kCategorizeIntentTag));
+  final category = _enumByName(
+    AgentCategory.values,
+    CategorizeTag.category.extractFrom(rawOutput),
+  );
+  final intent = _enumByName(
+    IntentClass.values,
+    CategorizeTag.intent.extractFrom(rawOutput),
+  );
   final complexity = _enumByName(
-      ComplexityTier.values, tagOrNullIgnoreCase(rawOutput, kCategorizeComplexityTag));
+    ComplexityTier.values,
+    CategorizeTag.complexity.extractFrom(rawOutput),
+  );
   if (category == null || intent == null || complexity == null) {
     return fallback;
   }

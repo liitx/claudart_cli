@@ -30,9 +30,9 @@ String _categorize({
   required IntentClass intent,
   required ComplexityTier complexity,
 }) =>
-    '<$kCategorizeCategoryTag>${category.name}</$kCategorizeCategoryTag>\n'
-    '<$kCategorizeIntentTag>${intent.name}</$kCategorizeIntentTag>\n'
-    '<$kCategorizeComplexityTag>${complexity.name}</$kCategorizeComplexityTag>\n';
+    '<${CategorizeTag.category.wireTag}>${category.name}</${CategorizeTag.category.wireTag}>\n'
+    '<${CategorizeTag.intent.wireTag}>${intent.name}</${CategorizeTag.intent.wireTag}>\n'
+    '<${CategorizeTag.complexity.wireTag}>${complexity.name}</${CategorizeTag.complexity.wireTag}>\n';
 
 void main() {
   test('plan step routes atomic-explore to haiku (the cost win)', () {
