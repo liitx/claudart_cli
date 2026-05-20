@@ -22,6 +22,7 @@
 
 import '../agent_model.dart';
 import '../agent_step.dart';
+import '../agents/categorization.dart';
 import '../pipeline_context.dart';
 import '../step_route.dart';
 
@@ -69,10 +70,27 @@ abstract final class FlowSteps {
     routes: const {},
   );
 
+  /// Sonnet is the fallback when the categorize step's output is
+  /// missing or ambiguous — per the audit constraint "degrade to
+  /// sonnet on ambiguity, the cost win comes from confident haiku
+  /// routing on atomic tasks."
+  static const AgentModel _planFallbackModel = AgentModel.sonnet;
+
+  /// Reads `<CATEGORY>` / `<INTENT>` / `<COMPLEXITY>` from the
+  /// categorize step's output and consults the τ matrix
+  /// (`routeModel`) for the right model. Falls back to sonnet when
+  /// any tag is missing or maps to an unknown enum variant.
+  static AgentModel? _planModelSelector(PipelineContext ctx) =>
+      modelForCategorizeOutput(
+        ctx[PipelineSlot.categorize] ?? '',
+        fallback: _planFallbackModel,
+      );
+
   static final AgentStep plan = AgentStep(
     id:    'plan',
     label: 'Generating plan',
-    model: AgentModel.sonnet,
+    model: _planFallbackModel,
+    modelSelector: _planModelSelector,
     systemPrompt: _planSystem,
     buildPrompt: (PipelineContext ctx) {
       final classification = ctx[PipelineSlot.categorize] ?? '';

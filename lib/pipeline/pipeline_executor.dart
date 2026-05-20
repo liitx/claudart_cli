@@ -88,16 +88,20 @@ class PipelineExecutor {
       // `displayStep` is the base offset, useful when this run is one
       // phase of a larger flow (e.g. resuming from checkpoint).
       final localIndex = steps.indexOf(current);
+      // Resolve once per step so the AgentStarted event and the runner
+      // call agree on which model fired. modelSelector can read ctx
+      // (e.g. plan step reads categorize output for ComplexityTier).
+      final stepModel = current.effectiveModel(ctx);
       yield AgentStarted(
         stepId:       current.id,
         label:        current.label,
-        model:        current.model,
+        model:        stepModel,
         displayStep:  displayStep + localIndex,
         displayTotal: displayTotal,
       );
 
       final result = await _runner(
-        model:        current.model,
+        model:        stepModel,
         systemPrompt: current.systemPrompt,
         message:      current.buildPrompt(ctx),
         workingDir:   ctx.projectRoot,
