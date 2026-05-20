@@ -17,7 +17,7 @@ dependencies:
     path: ../zedup
 
 dev_dependencies:
-  lints: ^6.1.0
+  lints: ^5.1.1
   test: ^1.31.0
   mocktail: ^1.0.5
   dartrix:
