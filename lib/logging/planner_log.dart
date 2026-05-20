@@ -12,6 +12,7 @@ import '../pipeline/agent_flow.dart';
 import '../pipeline/agent_model.dart';
 import '../pipeline/agents/categorization.dart';
 import '../pipeline/agents/path_heuristic.dart';
+import '../util/enum_util.dart';
 
 // Categorize step's XML tags live as a closed enum (`CategorizeTag`)
 // in `lib/pipeline/agents/categorization.dart`. The planner log calls
@@ -84,19 +85,19 @@ class PlannerDecision {
     // Each variant of CategorizeTag knows its wire-format name and
     // applies the case-insensitive lookup itself — the LLM may emit
     // lower-case tags despite the system prompt requesting upper.
-    final category = _enumByName(
+    final category = enumByName(
       AgentCategory.values,
       CategorizeTag.category.extractFrom(raw),
     );
-    final intent = _enumByName(
+    final intent = enumByName(
       IntentClass.values,
       CategorizeTag.intent.extractFrom(raw),
     );
-    final complexity = _enumByName(
+    final complexity = enumByName(
       ComplexityTier.values,
       CategorizeTag.complexity.extractFrom(raw),
     );
-    final model = _enumByName(
+    final model = enumByName(
       AgentModel.values,
       CategorizeTag.model.extractFrom(raw),
     );
@@ -119,17 +120,9 @@ class PlannerDecision {
   }
 }
 
-/// Looks up an enum variant by [Enum.name]. Case-insensitive comparison
-/// since the LLM may capitalize ('Sonnet' vs 'sonnet'). Returns null
-/// when [name] is null or doesn't match any variant.
-T? _enumByName<T extends Enum>(List<T> values, String? name) {
-  if (name == null) return null;
-  final lower = name.toLowerCase();
-  for (final value in values) {
-    if (value.name.toLowerCase() == lower) return value;
-  }
-  return null;
-}
+// `enumByName` lives in `lib/util/enum_util.dart` — see slice 2 of
+// the planner audit. Local reimplementation here is a constraint
+// violation; the canonical import above is what every caller uses.
 
 /// Default clock for planner records. UTC so JSONL streams from
 /// different machines or timezones sort and diff cleanly. Matches the
