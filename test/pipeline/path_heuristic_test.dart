@@ -56,6 +56,35 @@ void main() {
     );
   });
 
+  test('classifyPath — painter basename outranks /ui/ directory hint', () {
+    // Painter wins over ui because DesignSurface.guiPainter is
+    // declared before DesignSurface.guiUi; declaration order is the
+    // match priority. Pinning this so a future enum reorder is a
+    // test failure rather than a silent semantic shift.
+    expect(
+      classifyPath('lib/ui/wave_painter.dart'),
+      equals(DesignSurface.guiPainter),
+    );
+  });
+
+  test('classifyPath — non-dart files in painter dir still classify by dir', () {
+    // Directory hint wins even when basename has no `.dart`, since
+    // the dir match precedes the basename gate inside `classifyPath`.
+    expect(
+      classifyPath('lib/painters/README.md'),
+      equals(DesignSurface.guiPainter),
+    );
+  });
+
+  test('classifyPath — basename hint requires .dart extension', () {
+    // `painter.txt` outside `/painters/` is not a Dart file; it must
+    // fall through to logic. Guards the no-false-positive boundary.
+    expect(
+      classifyPath('lib/notes/painter.txt'),
+      equals(DesignSurface.logic),
+    );
+  });
+
   test('isDesignScope — empty input returns false', () {
     expect(isDesignScope(const []), isFalse);
   });
