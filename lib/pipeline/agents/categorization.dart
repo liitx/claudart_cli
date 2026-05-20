@@ -53,6 +53,47 @@ enum CategorizeTag {
     final content = tagOrNullIgnoreCase(rawOutput, wireTag);
     return (content == null || content.isEmpty) ? null : content;
   }
+
+  /// The set of values the LLM may emit inside this tag. Drawn from the
+  /// target enum's `.values` so renaming a variant on any axis
+  /// propagates into the categorize prompt automatically — closing the
+  /// prompt/parser drift seam that silently defeats `ComplexityTier`
+  /// routing when the two get out of sync.
+  ///
+  /// Exhaustive switch — adding a CategorizeTag variant forces a new
+  /// arm here at compile time.
+  List<String> get allowedValues => switch (this) {
+        CategorizeTag.category   =>
+          [for (final v in AgentCategory.values) v.name],
+        CategorizeTag.intent     =>
+          [for (final v in IntentClass.values) v.name],
+        CategorizeTag.complexity =>
+          [for (final v in ComplexityTier.values) v.name],
+        CategorizeTag.model      =>
+          [for (final v in AgentModel.values) v.name],
+      };
+}
+
+/// Assembles the categorize step's system prompt from the enum
+/// taxonomy. Listing the tag names + allowed values explicitly tells
+/// the LLM exactly what wire format to emit, AND keeps the prompt
+/// structurally in sync with the parser via `CategorizeTag.values`.
+///
+/// Without this seam closed (slice 5 of the planner audit), an enum
+/// rename produces silent fallback to sonnet for every task — the
+/// LLM emits the old variant name, parsing fails, and PR #24's
+/// `ComplexityTier`-driven routing is bypassed.
+String buildCategorizePrompt() {
+  final tagLines = [
+    for (final tag in CategorizeTag.values)
+      '<${tag.wireTag}>: ${tag.allowedValues.join(', ')}',
+  ].join('\n');
+  return 'You are a precise task classifier. Classify the user input '
+      'into exactly one value per axis below and emit each as an XML '
+      'tag.\n\n'
+      '$tagLines\n\n'
+      'Output only the four XML tags — no prose, no markdown, no '
+      'commentary outside the tags.';
 }
 
 // ── Axes ──────────────────────────────────────────────────────────────────────
