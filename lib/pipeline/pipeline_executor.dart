@@ -354,17 +354,16 @@ Future<({String text, Usage usage})?> _defaultClaudeRunner({
   required String message,
   required String workingDir,
 }) async {
-  final ts  = DateTime.now().toIso8601String();
-  // Returns null when debug mode is off — every conditional write
-  // below is a no-op. See `debug_mode.dart` for the toggle sources
-  // (CLI `--debug` flag or `CLAUDART_DEBUG=1` env var).
-  final log = debugLogFile();
-  log?.writeAsStringSync(
-    '[$ts] STEP: ${model.alias}  workingDir: $workingDir\n'
-    '--- SYSTEM PROMPT (${systemPrompt.length} bytes) ---\n$systemPrompt\n'
-    '--- MESSAGE (${message.length} bytes, full) ---\n$message\n'
-    '--- END INPUT ---\n\n',
-    mode: FileMode.append,
+  // `StepDebugTrace.start()` resolves the log file via `debugLogFile()`.
+  // When debug mode is off, every `trace.write*` below is a no-op.
+  // When on, writes are best-effort — IOException swallows so an
+  // unwritable log path never aborts a real pipeline run.
+  final trace = StepDebugTrace.start();
+  trace.writeStepHeader(
+    modelAlias: model.alias,
+    workingDir: workingDir,
+    systemPrompt: systemPrompt,
+    message: message,
   );
 
   try {
@@ -390,15 +389,12 @@ Future<({String text, Usage usage})?> _defaultClaudeRunner({
         .transform(const LineSplitter())) {
       if (line.trim().isEmpty) continue;
       lines.add(line);
-      log?.writeAsStringSync('[$ts] STREAM: $line\n', mode: FileMode.append);
+      trace.writeStreamLine(line);
     }
 
     final err  = await process.stderr.transform(const Utf8Decoder()).join();
     final code = await process.exitCode;
-    log?.writeAsStringSync(
-      '[$ts] EXIT: $code  stderr: ${err.trim().isEmpty ? "(none)" : err.trim()}\n\n',
-      mode: FileMode.append,
-    );
+    trace.writeExit(exitCode: code, stderrText: err);
 
     if (code != 0) {
       if (err.trim().isNotEmpty) stderr.writeln(err.trim());
@@ -421,22 +417,20 @@ Future<({String text, Usage usage})?> _defaultClaudeRunner({
       cacheCreation: (raw['cache_creation_input_tokens'] as int?) ?? 0,
       cost: (json['total_cost_usd'] as num?)?.toDouble() ?? 0,
     );
-    // Per-step summary appended to the debug log when debug mode is on.
-    // Tracks system-prompt bytes + message bytes + the parsed usage so a
-    // reader can correlate the harness overhead with what we actually
-    // sent. See pipeline/flows/flow_steps.dart for prompt sources.
-    log?.writeAsStringSync(
-      '[$ts] SUMMARY: model=${model.alias}  '
-      'sysBytes=${systemPrompt.length}  msgBytes=${message.length}  '
-      'in=${usage.input}  cached=${usage.cacheRead}  '
-      'cacheWrite=${usage.cacheCreation}  out=${usage.output}  '
-      '\$${usage.cost.toStringAsFixed(4)}\n'
-      '[$ts] OUTPUT-TEXT-BYTES: ${text.length}\n\n',
-      mode: FileMode.append,
+    trace.writeSummary(
+      modelAlias: model.alias,
+      systemPrompt: systemPrompt,
+      message: message,
+      input: usage.input,
+      cacheRead: usage.cacheRead,
+      cacheCreation: usage.cacheCreation,
+      output: usage.output,
+      cost: usage.cost,
+      resultText: text,
     );
     return (text: text, usage: usage);
   } on Exception catch (e) {
-    log?.writeAsStringSync('[$ts] EXCEPTION: $e\n\n', mode: FileMode.append);
+    trace.writeException(e);
     stderr.writeln('claude call failed: $e');
     return null;
   }
