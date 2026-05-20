@@ -11,6 +11,8 @@
 //   EscalateUser   → lookup couldn't answer; ask the user, return to named step
 //   Complete       → terminal — return the current context
 
+import 'route_tag.dart';
+
 /// Routing instruction emitted when an XML tag matches in step output.
 sealed class StepRoute {
   const StepRoute();
@@ -45,8 +47,12 @@ final class EscalateUser extends StepRoute {
 /// wait for user approval, then continue to [nextStepId] on confirm.
 /// Aborts (yields PipelineCompleted) if the user declines.
 final class ApprovalGate extends StepRoute {
-  final String planTag;     // XML tag in step output containing the plan text
-  final String nextStepId;  // step to run after approval
+  /// Which `<TAG>...</TAG>` in the step output carries the plan text.
+  /// Typed as the closed [RouteTag] enum (instead of `String`) so the
+  /// executor reads `planTag.wireTag` at extraction time and any wire-
+  /// format rename is a single switch arm change in `route_tag.dart`.
+  final RouteTag planTag;
+  final String nextStepId;
   const ApprovalGate({required this.planTag, required this.nextStepId});
 }
 

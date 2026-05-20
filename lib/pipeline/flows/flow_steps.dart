@@ -16,7 +16,7 @@
 //   [construct]  sonnet — writes the full handoff structure from the approved
 //                         plan; emits <HANDOFF> (Complete)
 //
-// Approval gate: plan → ApprovalGate('PLAN', 'construct')
+// Approval gate: plan → ApprovalGate(RouteTag.plan, 'construct')
 //   User sees the plan before construct runs.
 //   Declining aborts and yields PipelineCompleted with pre-construct ctx.
 
@@ -24,6 +24,7 @@ import '../agent_model.dart';
 import '../agent_step.dart';
 import '../agents/categorization.dart';
 import '../pipeline_context.dart';
+import '../route_tag.dart';
 import '../step_route.dart';
 
 abstract final class FlowSteps {
@@ -102,8 +103,11 @@ abstract final class FlowSteps {
       ].join('\n\n');
     },
     routes: {
-      'PLAN':     const ApprovalGate(planTag: 'PLAN', nextStepId: 'construct'),
-      'QUESTION': const QuestionBranch('clarify'),
+      RouteTag.plan.wireTag: const ApprovalGate(
+        planTag: RouteTag.plan,
+        nextStepId: 'construct',
+      ),
+      RouteTag.question.wireTag: const QuestionBranch('clarify'),
     },
   );
 
@@ -115,8 +119,8 @@ abstract final class FlowSteps {
     buildPrompt: (PipelineContext ctx) =>
         'Question: ${ctx[PipelineSlot.question] ?? ''}\n\nOriginal input: ${ctx.bug}',
     routes: {
-      'ANSWER':  const FeedBackTo('plan'),
-      'UNKNOWN': const EscalateUser('plan'),
+      RouteTag.answer.wireTag:  const FeedBackTo('plan'),
+      RouteTag.unknown.wireTag: const EscalateUser('plan'),
     },
   );
 
@@ -130,7 +134,7 @@ abstract final class FlowSteps {
       return 'Approved plan:\n$plan\n\nOriginal task:\n${ctx.bug}';
     },
     routes: {
-      'HANDOFF': const Complete(),
+      RouteTag.handoff.wireTag: const Complete(),
     },
   );
 
