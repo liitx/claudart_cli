@@ -15,10 +15,28 @@ String tagOr(String text, String tag, [String fallback = '_Not determined._']) {
 }
 
 /// Extracts content between `<TAG>` and `</TAG>`.
-/// Returns null when the tag is absent.
+/// Returns null when the tag is absent. Case-sensitive — use
+/// [tagOrNullIgnoreCase] when the producer's case is unreliable
+/// (e.g. LLM-emitted tags).
 ///
 /// ∀ text, tag: tagOrNull(text, tag) == null ↔ tag ∉ text
 String? tagOrNull(String text, String tag) {
   final match = RegExp('<$tag>([\\s\\S]*?)</$tag>').firstMatch(text);
+  return match?.group(1)?.trim();
+}
+
+/// Case-insensitive variant of [tagOrNull]. The LLM may emit
+/// `<category>` instead of `<CATEGORY>` even when the system prompt
+/// requests upper-case; consumers that route on the value (not the
+/// tag's exact spelling) should call this.
+///
+/// Only the tag name is matched case-insensitively. The captured
+/// content is returned verbatim (modulo whitespace trim) so callers
+/// can apply their own normalization to the value.
+String? tagOrNullIgnoreCase(String text, String tag) {
+  final match = RegExp(
+    '<$tag>([\\s\\S]*?)</$tag>',
+    caseSensitive: false,
+  ).firstMatch(text);
   return match?.group(1)?.trim();
 }

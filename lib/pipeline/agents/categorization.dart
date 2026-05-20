@@ -18,12 +18,15 @@
 import '../agent_model.dart';
 import '../xml_tags.dart';
 
-/// XML tag names emitted by the categorize step. Exposed so the route
-/// resolver, the planner log, and any future consumer reference a
-/// single source for the wire-format.
+/// XML tag names emitted by the categorize step. Single source — the
+/// planner log and the route resolver both reference these consts so
+/// a rename never drifts. Tag-name lookups are case-insensitive via
+/// [tagOrNullIgnoreCase] since the LLM may not honor the system
+/// prompt's upper-case convention.
 const String kCategorizeCategoryTag   = 'CATEGORY';
 const String kCategorizeIntentTag     = 'INTENT';
 const String kCategorizeComplexityTag = 'COMPLEXITY';
+const String kCategorizeModelTag      = 'MODEL';
 
 // ── Axes ──────────────────────────────────────────────────────────────────────
 
@@ -127,11 +130,11 @@ AgentModel modelForCategorizeOutput(
 }) {
   if (rawOutput.isEmpty) return fallback;
   final category =
-      _enumByName(AgentCategory.values, tagOrNull(rawOutput, kCategorizeCategoryTag));
+      _enumByName(AgentCategory.values, tagOrNullIgnoreCase(rawOutput, kCategorizeCategoryTag));
   final intent =
-      _enumByName(IntentClass.values, tagOrNull(rawOutput, kCategorizeIntentTag));
+      _enumByName(IntentClass.values, tagOrNullIgnoreCase(rawOutput, kCategorizeIntentTag));
   final complexity = _enumByName(
-      ComplexityTier.values, tagOrNull(rawOutput, kCategorizeComplexityTag));
+      ComplexityTier.values, tagOrNullIgnoreCase(rawOutput, kCategorizeComplexityTag));
   if (category == null || intent == null || complexity == null) {
     return fallback;
   }

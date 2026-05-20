@@ -132,7 +132,32 @@ void main() {
     });
   });
 
-  group('modelForCategorizeOutput — case insensitivity', () {
+  group('modelForCategorizeOutput — tag-NAME case insensitivity', () {
+    test('lower-case tag names parse (LLM may not honor upper-case prompt)',
+        () {
+      const raw =
+          '<category>feature</category>\n'
+          '<intent>explore</intent>\n'
+          '<complexity>atomic</complexity>\n';
+      expect(
+        modelForCategorizeOutput(raw, fallback: _fallback),
+        equals(AgentModel.haiku),
+      );
+    });
+
+    test('mixed-case tag names parse', () {
+      const raw =
+          '<Category>feature</Category>\n'
+          '<Intent>explore</Intent>\n'
+          '<Complexity>atomic</Complexity>\n';
+      expect(
+        modelForCategorizeOutput(raw, fallback: _fallback),
+        equals(AgentModel.haiku),
+      );
+    });
+  });
+
+  group('modelForCategorizeOutput — tag-VALUE case insensitivity', () {
     test('mixed-case enum names match (LLM may capitalize)', () {
       const raw =
           '<$kCategorizeCategoryTag>Feature</$kCategorizeCategoryTag>\n'
