@@ -104,5 +104,33 @@ void main() {
       expect(prompt.contains('only') || prompt.contains('Output'), isTrue);
       expect(prompt, contains('XML'));
     });
+
+    test('every tag has a matching open + close in the schema', () {
+      // Prevents the LLM mirroring a half-tag schema (`<TAG>:` with no
+      // `</TAG>`). The parser requires the closing tag; the prompt
+      // must demonstrate it.
+      for (final tag in CategorizeTag.values) {
+        expect(prompt, contains('<${tag.wireTag}>'));
+        expect(
+          prompt,
+          contains('</${tag.wireTag}>'),
+          reason: 'closing </${tag.wireTag}> missing from schema',
+        );
+      }
+    });
+
+    test('tag count in the prompt tracks CategorizeTag.values.length', () {
+      // The user-facing instruction "Output only the N XML tags" must
+      // match the actual variant count so adding a CategorizeTag
+      // variant updates the prompt automatically (the audit's
+      // hardcoded-"four" concern).
+      expect(
+        prompt,
+        contains('${CategorizeTag.values.length} XML tags'),
+        reason:
+            'prompt should reference ${CategorizeTag.values.length} '
+            'tags, derived from CategorizeTag.values.length',
+      );
+    });
   });
 }

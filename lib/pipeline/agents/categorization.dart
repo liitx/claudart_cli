@@ -84,16 +84,27 @@ enum CategorizeTag {
 /// LLM emits the old variant name, parsing fails, and PR #24's
 /// `ComplexityTier`-driven routing is bypassed.
 String buildCategorizePrompt() {
-  final tagLines = [
+  // Each schema line is itself valid XML — `<TAG>one of: …</TAG>` —
+  // so the LLM sees the actual wire format (open tag, content, close
+  // tag) it must mirror at output time. The previous "<TAG>: v1, v2"
+  // shape risked the model echoing the colon/no-closing-tag schema
+  // line literally instead of producing a parseable `<TAG>v1</TAG>`.
+  final schemaLines = [
     for (final tag in CategorizeTag.values)
-      '<${tag.wireTag}>: ${tag.allowedValues.join(', ')}',
+      '<${tag.wireTag}>one of: ${tag.allowedValues.join(', ')}'
+          '</${tag.wireTag}>',
   ].join('\n');
+  // Tag count derives from `.values.length` so adding a CategorizeTag
+  // variant updates the user-facing instruction automatically.
+  final tagCount = CategorizeTag.values.length;
   return 'You are a precise task classifier. Classify the user input '
       'into exactly one value per axis below and emit each as an XML '
-      'tag.\n\n'
-      '$tagLines\n\n'
-      'Output only the four XML tags — no prose, no markdown, no '
-      'commentary outside the tags.';
+      'tag with matching open + close.\n\n'
+      'Schema (mirror this exact wire format, substituting one value '
+      'from each list):\n'
+      '$schemaLines\n\n'
+      'Output only the $tagCount XML tags — no prose, no markdown, '
+      'no commentary outside the tags.';
 }
 
 // ── Axes ──────────────────────────────────────────────────────────────────────
