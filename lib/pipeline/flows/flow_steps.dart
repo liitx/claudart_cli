@@ -102,12 +102,12 @@ abstract final class FlowSteps {
         if (clarification.isNotEmpty) 'Additional context:\n$clarification',
       ].join('\n\n');
     },
-    routes: {
-      RouteTag.plan.wireTag: const ApprovalGate(
+    routes: const {
+      RouteTag.plan: ApprovalGate(
         planTag: RouteTag.plan,
         nextStepId: 'construct',
       ),
-      RouteTag.question.wireTag: const QuestionBranch('clarify'),
+      RouteTag.question: QuestionBranch('clarify'),
     },
   );
 
@@ -118,9 +118,9 @@ abstract final class FlowSteps {
     systemPrompt: _clarifySystem,
     buildPrompt: (PipelineContext ctx) =>
         'Question: ${ctx[PipelineSlot.question] ?? ''}\n\nOriginal input: ${ctx.bug}',
-    routes: {
-      RouteTag.answer.wireTag:  const FeedBackTo('plan'),
-      RouteTag.unknown.wireTag: const EscalateUser('plan'),
+    routes: const {
+      RouteTag.answer:  FeedBackTo('plan'),
+      RouteTag.unknown: EscalateUser('plan'),
     },
   );
 
@@ -133,8 +133,8 @@ abstract final class FlowSteps {
       final plan = ctx[PipelineSlot.plan] ?? '';
       return 'Approved plan:\n$plan\n\nOriginal task:\n${ctx.bug}';
     },
-    routes: {
-      RouteTag.handoff.wireTag: const Complete(),
+    routes: const {
+      RouteTag.handoff: Complete(),
     },
   );
 

@@ -24,6 +24,7 @@
 
 import 'agent_model.dart';
 import 'pipeline_context.dart';
+import 'route_tag.dart';
 import 'step_route.dart';
 
 /// Resolves a step's model from the current [PipelineContext]. Return
@@ -48,10 +49,13 @@ class AgentStep {
   /// haiku). Null means "use [model] always."
   final ModelSelector? modelSelector;
 
-  /// Tag-to-route map. The executor finds the first tag present in the step's
-  /// output and follows its route. Order matters: entries are checked in
-  /// insertion order (Dart Map preserves insertion order).
-  final Map<String, StepRoute> routes;
+  /// Tag-to-route map. Keys are typed [RouteTag] variants (not raw
+  /// strings) so a rename of any wire-format tag is a single switch
+  /// arm change in `route_tag.dart`. The executor finds the first
+  /// tag present in the step's output and follows its route. Order
+  /// matters: entries are checked in insertion order (Dart Map
+  /// preserves insertion order).
+  final Map<RouteTag, StepRoute> routes;
 
   const AgentStep({
     required this.id,
