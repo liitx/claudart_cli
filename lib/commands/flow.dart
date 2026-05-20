@@ -195,6 +195,11 @@ Future<void> runFlow({
 /// Parses the categorize step's output and appends one JSONL record to
 /// the planner log. No-op when the output is malformed (missing tag or
 /// unknown enum variant) — logging is best-effort, never blocks the flow.
+///
+/// I/O failures from [PlannerLog.record] (disk full, perms, missing
+/// parent dir) are swallowed; the categorize step continues and a
+/// single warning line is written to stderr. The warning string lives
+/// on [plannerLogRecordFailureWarning] so production + tests share it.
 void _recordClassification(PipelineContext ctx, PlannerLog planner) {
   final raw = ctx[PipelineSlot.categorize] ?? '';
   if (raw.isEmpty) return;
@@ -206,7 +211,11 @@ void _recordClassification(PipelineContext ctx, PlannerLog planner) {
     designSurfaceCounts: planner.tallySurfaces(scopedPaths),
   );
   if (decision == null) return;
-  planner.record(decision);
+  try {
+    planner.record(decision);
+  } on Exception {
+    stderr.writeln(plannerLogRecordFailureWarning);
+  }
 }
 
 // ── Phase 2 helper ────────────────────────────────────────────────────────────
