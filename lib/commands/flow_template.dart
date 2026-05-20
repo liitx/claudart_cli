@@ -7,6 +7,15 @@
 // prompt; agents categorize intent, generate a plan, and construct the handoff.
 // The user approves the plan before the construct step runs.
 
+import '../pipeline/agents/categorization.dart';
+
+/// Renders the variant list for one axis as `a | b | c`, sourced from
+/// the enum's `.values` so adding (or renaming) a variant updates the
+/// template automatically. Same single-source-of-truth pattern the
+/// categorize prompt uses for its schema (slice 5).
+String _axisList(Iterable<Enum> values) =>
+    values.map((v) => v.name).join(' | ');
+
 String flowCommandTemplate(String workspacePath, String projectName) => '''
 ---
 description: Construct intent-driven session — $projectName
@@ -38,12 +47,13 @@ If missing: stop. Tell the user: "Scaffold not found. Run `/setup` first."
 ## Step 1 — Classify intent
 
 Using the task taxonomy:
-- AgentCategory: feature | bug | refactor | research | setup
-- IntentClass:   explore | analyze | implement | document
-- ComplexityTier: atomic | compound | systemic
+- AgentCategory: ${_axisList(AgentCategory.values)}
+- IntentClass:   ${_axisList(IntentClass.values)}
+- ComplexityTier: ${_axisList(ComplexityTier.values)}
 
-Classify the user's prompt into all three axes.
-Invoke `ModelSelectionAgent.classify(input)` reasoning (apply the τ routing mentally).
+Classify the user's prompt into all three axes, then apply the τ routing
+matrix (`routeModel` in `lib/pipeline/agents/categorization.dart`) to pick
+the preferred model.
 
 Tell the user:
 ```

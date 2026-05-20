@@ -14,13 +14,13 @@ import '../git_utils.dart';
 import '../logging/planner_log.dart';
 import '../paths.dart';
 import '../pipeline/agents/categorization.dart';
-import '../pipeline/agents/model_selection_agent.dart';
 import '../pipeline/flows/flow_steps.dart';
 import '../pipeline/pipeline_context.dart';
 import '../pipeline/route_tag.dart';
 import '../pipeline/pipeline_executor.dart';
 import '../pipeline/xml_tags.dart';
 import '../registry.dart';
+import '../util/enum_util.dart';
 import '../ui/ansi.dart' as ansi;
 import '../ui/menu.dart';
 import '../workspace/workspace_config.dart';
@@ -138,23 +138,6 @@ Future<void> runFlow({
     exit_(0);
   }
 
-  // ── Pre-classify for display ───────────────────────────────────────────────
-
-  print('');
-  final classification = ModelSelectionAgent.classify(prompt);
-  final preferred      = routeModel(
-    classification.category,
-    classification.intent,
-    classification.complexity,
-  );
-  print(
-    '  ${ansi.dim}Classified:${ansi.reset}  '
-    '${classification.category.name} × '
-    '${classification.intent.name} × '
-    '${classification.complexity.name}'
-    '  ${ansi.dim}→${ansi.reset}  ${preferred.shortName}\n',
-  );
-
   // ── Pipeline ───────────────────────────────────────────────────────────────
 
   var ctx = PipelineContext(
@@ -171,6 +154,11 @@ Future<void> runFlow({
     displayStep:  1,
     displayTotal: 3,
   );
+
+  // Display the LLM's actual classification (not a parallel regex
+  // pre-classify) so the verdict the user sees is the one that
+  // actually drives `_planModelSelector` downstream.
+  _printClassification(ctx);
 
   // Record the planner's routing decision to ~/.claudart/planner.jsonl.
   // Skips silently when the categorize step's output is malformed —
@@ -189,6 +177,48 @@ Future<void> runFlow({
   );
 
   await _writeHandoff(ctx, workspace, fileIO, exit_);
+}
+
+// ── Classification display ───────────────────────────────────────────────────
+
+/// Prints the LLM's actual classification verdict to the terminal. Pulls
+/// the three axes from `<CATEGORY>` / `<INTENT>` / `<COMPLEXITY>` in the
+/// categorize step's output and routes them through `routeModel` — the
+/// same path `_planModelSelector` consults — so the verdict the user sees
+/// is the one that picks the plan-step model. No parallel regex
+/// classifier, no display/routing divergence.
+///
+/// On malformed output (missing/unknown tag) the helper still emits a
+/// single line so the user knows categorize ran but the verdict is
+/// degraded; downstream `_planModelSelector` will fall back to sonnet.
+void _printClassification(PipelineContext ctx) {
+  final raw = ctx[PipelineSlot.categorize] ?? '';
+  final category = enumByName(
+    AgentCategory.values,
+    CategorizeTag.category.extractFrom(raw),
+  );
+  final intent = enumByName(
+    IntentClass.values,
+    CategorizeTag.intent.extractFrom(raw),
+  );
+  final complexity = enumByName(
+    ComplexityTier.values,
+    CategorizeTag.complexity.extractFrom(raw),
+  );
+  if (category == null || intent == null || complexity == null) {
+    print(
+      '  ${ansi.dim}Classified:${ansi.reset}  '
+      '${ansi.dim}(categorize output unparseable — '
+      'plan will fall back to sonnet)${ansi.reset}\n',
+    );
+    return;
+  }
+  final routed = routeModel(category, intent, complexity);
+  print(
+    '  ${ansi.dim}Classified:${ansi.reset}  '
+    '${category.name} × ${intent.name} × ${complexity.name}'
+    '  ${ansi.dim}→${ansi.reset}  ${routed.shortName}\n',
+  );
 }
 
 // ── Planner-log helper ────────────────────────────────────────────────────────
