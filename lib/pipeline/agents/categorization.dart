@@ -16,6 +16,17 @@
 //   ComplexityTier.atomic ∩ ComplexityTier.systemic = ∅  (disjoint tiers)
 
 import '../agent_model.dart';
+import '../xml_tags.dart';
+
+/// XML tag names emitted by the categorize step. Single source — the
+/// planner log and the route resolver both reference these consts so
+/// a rename never drifts. Tag-name lookups are case-insensitive via
+/// [tagOrNullIgnoreCase] since the LLM may not honor the system
+/// prompt's upper-case convention.
+const String kCategorizeCategoryTag   = 'CATEGORY';
+const String kCategorizeIntentTag     = 'INTENT';
+const String kCategorizeComplexityTag = 'COMPLEXITY';
+const String kCategorizeModelTag      = 'MODEL';
 
 // ── Axes ──────────────────────────────────────────────────────────────────────
 
@@ -103,3 +114,40 @@ AgentModel routeModel(
       // Visual design — balanced reasoning for spec generation at any tier.
       (_, IntentClass.design,    _)                         => AgentModel.sonnet,
     };
+
+/// Resolves an [AgentModel] from a categorize step's raw XML output by
+/// extracting the three classification tags and consulting [routeModel].
+/// Returns [fallback] when any tag is missing or maps to an unknown
+/// enum variant — degrading gracefully per the reasoner's constraint
+/// ("misrouting complex tasks to haiku is worse than full sonnet").
+///
+/// Wired into [AgentStep.modelSelector] for the plan step so the
+/// categorize step's three-axis classification actually drives the
+/// downstream model choice instead of being recorded and ignored.
+AgentModel modelForCategorizeOutput(
+  String rawOutput, {
+  required AgentModel fallback,
+}) {
+  if (rawOutput.isEmpty) return fallback;
+  final category =
+      _enumByName(AgentCategory.values, tagOrNullIgnoreCase(rawOutput, kCategorizeCategoryTag));
+  final intent =
+      _enumByName(IntentClass.values, tagOrNullIgnoreCase(rawOutput, kCategorizeIntentTag));
+  final complexity = _enumByName(
+      ComplexityTier.values, tagOrNullIgnoreCase(rawOutput, kCategorizeComplexityTag));
+  if (category == null || intent == null || complexity == null) {
+    return fallback;
+  }
+  return routeModel(category, intent, complexity);
+}
+
+/// Case-insensitive lookup by [Enum.name]. The LLM may capitalize
+/// (`'Sonnet'` vs `'sonnet'`) so we normalize before matching.
+T? _enumByName<T extends Enum>(List<T> values, String? name) {
+  if (name == null) return null;
+  final lower = name.toLowerCase();
+  for (final value in values) {
+    if (value.name.toLowerCase() == lower) return value;
+  }
+  return null;
+}
