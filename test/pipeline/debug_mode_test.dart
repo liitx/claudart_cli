@@ -101,6 +101,190 @@ void main() {
     setDebugEnabled(false);
     expect(debugEnabled(environment: const {}), isFalse);
   });
+
+  // ── utf8ByteLength ──────────────────────────────────────────────────────
+
+  group('utf8ByteLength returns real byte counts (not UTF-16 code units)',
+      () {
+    test('ASCII string: bytes == chars', () {
+      expect(utf8ByteLength('hello'), equals(5));
+    });
+
+    test('multi-byte UTF-8: bytes > String.length', () {
+      // The em dash '—' is a single Dart code unit but 3 bytes in UTF-8.
+      const emDash = '—';
+      expect(emDash.length, equals(1));
+      expect(utf8ByteLength(emDash), equals(3));
+    });
+
+    test('empty string returns 0', () {
+      expect(utf8ByteLength(''), equals(0));
+    });
+  });
+
+  // ── StepDebugTrace ──────────────────────────────────────────────────────
+
+  group('StepDebugTrace.disabled is a no-op', () {
+    test('isActive is false', () {
+      expect(StepDebugTrace.disabled().isActive, isFalse);
+    });
+
+    test('every write method is safe to call', () {
+      // No assertion needed — the contract is "no throw, no write".
+      final trace = StepDebugTrace.disabled();
+      trace.writeStepHeader(
+        modelAlias: 'haiku',
+        workingDir: '/tmp',
+        systemPrompt: 'sys',
+        message: 'msg',
+      );
+      trace.writeStreamLine('line');
+      trace.writeExit(exitCode: 0, stderrText: '');
+      trace.writeSummary(
+        modelAlias: 'haiku',
+        systemPrompt: 'sys',
+        message: 'msg',
+        input: 1,
+        cacheRead: 2,
+        cacheCreation: 3,
+        output: 4,
+        cost: 0.0001,
+        resultText: 'result',
+      );
+      trace.writeException(Exception('x'));
+    });
+  });
+
+  group('StepDebugTrace.forTesting routes writes through the injected sink',
+      () {
+    test('every label + field declared in debug_mode appears in output', () {
+      final buffer = StringBuffer();
+      final trace = StepDebugTrace.forTesting(buffer.write);
+      trace.writeStepHeader(
+        modelAlias: 'haiku',
+        workingDir: '/tmp',
+        systemPrompt: 'sys-prompt',
+        message: 'msg-body',
+      );
+      trace.writeStreamLine('streamed-line');
+      trace.writeExit(exitCode: 0, stderrText: '');
+      trace.writeSummary(
+        modelAlias: 'haiku',
+        systemPrompt: 'sys-prompt',
+        message: 'msg-body',
+        input: 10,
+        cacheRead: 20,
+        cacheCreation: 30,
+        output: 40,
+        cost: 0.05,
+        resultText: 'final-text',
+      );
+      trace.writeException(Exception('boom'));
+      final actual = buffer.toString();
+      const labels = [
+        kTraceLabelStep,
+        kTraceLabelStream,
+        kTraceLabelExit,
+        kTraceLabelSummary,
+        kTraceLabelOutputBytes,
+        kTraceLabelException,
+      ];
+      for (final label in labels) {
+        expect(actual, contains('$label: '),
+            reason: 'expected label "$label" in trace output');
+      }
+      const fields = [
+        kTraceFieldModel,
+        kTraceFieldWorkingDir,
+        kTraceFieldSysBytes,
+        kTraceFieldMsgBytes,
+        kTraceFieldInput,
+        kTraceFieldCached,
+        kTraceFieldCacheWrite,
+        kTraceFieldOutput,
+        kTraceFieldElapsedMs,
+        kTraceFieldStderr,
+      ];
+      for (final field in fields) {
+        expect(actual, contains(field),
+            reason: 'expected field "$field" in trace output');
+      }
+      expect(actual, contains(kTraceStderrEmpty));
+      expect(actual, contains(kTraceDividerSystemOpen));
+      expect(actual, contains(kTraceDividerMessageOpen));
+      expect(actual, contains(kTraceDividerEndInput));
+    });
+
+    test('empty stderr renders the sentinel; non-empty trims to text', () {
+      final empty = StringBuffer();
+      StepDebugTrace.forTesting(empty.write)
+          .writeExit(exitCode: 0, stderrText: '   \n  ');
+      expect(empty.toString(), contains(kTraceStderrEmpty));
+
+      final nonEmpty = StringBuffer();
+      StepDebugTrace.forTesting(nonEmpty.write)
+          .writeExit(exitCode: 1, stderrText: '  oops  \n');
+      expect(nonEmpty.toString(), contains('oops'));
+      expect(nonEmpty.toString(), isNot(contains(kTraceStderrEmpty)));
+    });
+
+    test('summary line shows utf8 byte counts, not UTF-16 code units', () {
+      const sysPrompt = '—'; // 1 code unit, 3 utf-8 bytes
+      final buffer = StringBuffer();
+      StepDebugTrace.forTesting(buffer.write).writeSummary(
+        modelAlias: 'haiku',
+        systemPrompt: sysPrompt,
+        message: '',
+        input: 0,
+        cacheRead: 0,
+        cacheCreation: 0,
+        output: 0,
+        cost: 0,
+        resultText: '',
+      );
+      expect(buffer.toString(), contains('$kTraceFieldSysBytes=3'));
+    });
+  });
+
+  group('best-effort write contract', () {
+    test('disabled trace never throws — every method', () {
+      expect(() {
+        final trace = StepDebugTrace.disabled();
+        trace.writeStepHeader(
+            modelAlias: 'm', workingDir: '/', systemPrompt: '', message: '');
+        trace.writeStreamLine('');
+        trace.writeExit(exitCode: 0, stderrText: '');
+        trace.writeSummary(
+          modelAlias: 'm',
+          systemPrompt: '',
+          message: '',
+          input: 0,
+          cacheRead: 0,
+          cacheCreation: 0,
+          output: 0,
+          cost: 0,
+          resultText: '',
+        );
+        trace.writeException(Exception('x'));
+      }, returnsNormally);
+    });
+
+    test('forTesting with a sink that throws — writeStepHeader propagates',
+        () {
+      // The IOException-swallow contract is specific to file IO via
+      // [_appendToFile]. Sinks passed via [forTesting] are a test
+      // affordance; they propagate their own exceptions so a buggy
+      // test sink surfaces loudly rather than hiding behind the
+      // best-effort wrapper. Documents the boundary.
+      final trace = StepDebugTrace.forTesting((_) {
+        throw const FormatException('sink error');
+      });
+      expect(
+        () => trace.writeStreamLine('x'),
+        throwsA(isA<FormatException>()),
+      );
+    });
+  });
 }
 
 // ── Literal env-var name aliases used only by the path-override case ──────
