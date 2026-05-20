@@ -67,13 +67,9 @@ abstract final class SuggestSteps {
     model:        AgentModel.sonnet,
     systemPrompt: _reasonerSystem,
     buildPrompt:  _plannerPrompt,
-    routes: {
-      // Outer literal can't be const because `RouteTag.<v>.wireTag` is
-      // a property access on a const-created enum (not const-evaluable
-      // per Dart's rules). Inner StepRoute values stay const — these
-      // are static-field maps built once at class load.
-      RouteTag.changes.wireTag:  const GoTo('applier'),
-      RouteTag.question.wireTag: const QuestionBranch('lookup'),
+    routes: const {
+      RouteTag.changes:  GoTo('applier'),
+      RouteTag.question: QuestionBranch('lookup'),
     },
   );
 
@@ -85,9 +81,9 @@ abstract final class SuggestSteps {
     model:        AgentModel.haiku,
     systemPrompt: _readerSystem,
     buildPrompt:  _lookupPrompt,
-    routes: {
-      RouteTag.answer.wireTag:  const FeedBackTo('planner'),
-      RouteTag.unknown.wireTag: const EscalateUser('planner'),
+    routes: const {
+      RouteTag.answer:  FeedBackTo('planner'),
+      RouteTag.unknown: EscalateUser('planner'),
     },
   );
 

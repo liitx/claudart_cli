@@ -24,6 +24,7 @@ import 'agent_model.dart';
 import 'agent_step.dart';
 import 'pipeline_context.dart';
 import 'pipeline_event.dart';
+import 'route_tag.dart';
 import 'step_route.dart';
 import 'usage.dart';
 import 'xml_tags.dart';
@@ -119,11 +120,13 @@ class PipelineExecutor {
 
       yield AgentCompleted(stepId: current.id, usage: result.usage);
 
-      // Find first matching tag → route.
-      String?    matchedTag;
+      // Find first matching tag → route. `matchedTag` is typed
+      // [RouteTag] so downstream extractions read `.wireTag` once and
+      // pass the wire string to `tagOrNull`.
+      RouteTag?  matchedTag;
       StepRoute? route;
       for (final entry in current.routes.entries) {
-        if (tagOrNull(result.text, entry.key) != null) {
+        if (tagOrNull(result.text, entry.key.wireTag) != null) {
           matchedTag = entry.key;
           route      = entry.value;
           break;
@@ -134,7 +137,8 @@ class PipelineExecutor {
         // strict: if routes were declared but none matched, escalate rather
         // than silently falling through — agent output violated its schema.
         if (strict && current.routes.isNotEmpty) {
-          final expected = current.routes.keys.map((t) => '<$t>').join(', ');
+          final expected =
+              current.routes.keys.map((t) => '<${t.wireTag}>').join(', ');
           yield AgentEscalating(
             question:
                 'Step "${current.id}" produced no recognised tag.\n'
@@ -162,17 +166,17 @@ class PipelineExecutor {
           current = stepMap[stepId]!;
 
         case QuestionBranch(:final lookupStepId):
-          final question = tagOrNull(result.text, matchedTag!)!;
+          final question = tagOrNull(result.text, matchedTag!.wireTag)!;
           ctx     = ctx.withSlot(PipelineSlot.question, question);
           current = stepMap[lookupStepId]!;
 
         case FeedBackTo(:final stepId):
-          final answer = tagOrNull(result.text, matchedTag!)!;
+          final answer = tagOrNull(result.text, matchedTag!.wireTag)!;
           ctx     = ctx.appendClarification('Codebase lookup: $answer');
           current = stepMap[stepId]!;
 
         case EscalateUser(:final returnToStepId):
-          final unknown  = tagOrNull(result.text, matchedTag!);
+          final unknown  = tagOrNull(result.text, matchedTag!.wireTag);
           final question = ctx[PipelineSlot.question] ?? '';
           yield AgentEscalating(
             question:       question,
