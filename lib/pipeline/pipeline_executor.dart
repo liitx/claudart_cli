@@ -18,6 +18,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../ui/ansi.dart' as ansi;
+import 'debug_mode.dart';
 import '../ui/menu.dart';
 import 'agent_model.dart';
 import 'agent_step.dart';
@@ -347,13 +348,6 @@ Future<T?> runWithSpinner<T>({
 
 // ── Default ClaudeRunner ──────────────────────────────────────────────────────
 
-File? get _diagLog {
-  final env = Platform.environment;
-  if (env['CLAUDART_DIAG'] != '1') return null;
-  final path = env['CLAUDART_DIAG_PATH'] ?? '/tmp/claudart_diag.log';
-  return File(path);
-}
-
 Future<({String text, Usage usage})?> _defaultClaudeRunner({
   required AgentModel model,
   required String systemPrompt,
@@ -361,7 +355,10 @@ Future<({String text, Usage usage})?> _defaultClaudeRunner({
   required String workingDir,
 }) async {
   final ts  = DateTime.now().toIso8601String();
-  final log = _diagLog;
+  // Returns null when debug mode is off — every conditional write
+  // below is a no-op. See `debug_mode.dart` for the toggle sources
+  // (CLI `--debug` flag or `CLAUDART_DEBUG=1` env var).
+  final log = debugLogFile();
   log?.writeAsStringSync(
     '[$ts] STEP: ${model.alias}  workingDir: $workingDir\n'
     '--- SYSTEM PROMPT (${systemPrompt.length} bytes) ---\n$systemPrompt\n'
@@ -424,7 +421,7 @@ Future<({String text, Usage usage})?> _defaultClaudeRunner({
       cacheCreation: (raw['cache_creation_input_tokens'] as int?) ?? 0,
       cost: (json['total_cost_usd'] as num?)?.toDouble() ?? 0,
     );
-    // Per-step summary appended to the diag log when CLAUDART_DIAG=1.
+    // Per-step summary appended to the debug log when debug mode is on.
     // Tracks system-prompt bytes + message bytes + the parsed usage so a
     // reader can correlate the harness overhead with what we actually
     // sent. See pipeline/flows/flow_steps.dart for prompt sources.
