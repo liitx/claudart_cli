@@ -19,4 +19,5 @@ dev_dependencies:
   test: ^1.31.0
   mocktail: ^1.0.5
   dartrix:
-    path: ../dartrix
+    git:
+      url: https://github.com/liitx/dartrix.git
