@@ -14,6 +14,7 @@ import '../session/session_state.dart' show SessionState, HandoffStatus;
 import '../ui/ansi.dart' as ansi;
 import '../ui/menu.dart';
 import 'scan.dart';
+import '../session/session_ops.dart';
 import '../ui/render.dart' as render;
 
 /// Returns absolute paths of files named [basename] under [projectRoot].
@@ -92,6 +93,10 @@ Future<void> runSetup({
         exit_(0);
       }
       assert(choice == _SetupMenu.startFresh);
+      final archivedName = archiveCurrentHandoff(workspace: workspace, io: fileIO);
+      if (archivedName != null) {
+        print(ansi.c(ansi.dim, '  Previous session archived → $archivedName'));
+      }
       // Fall through to questions below.
     }
   }

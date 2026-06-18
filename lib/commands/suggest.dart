@@ -10,6 +10,7 @@ import '../pipeline/xml_tags.dart';
 import '../registry.dart';
 import '../ui/ansi.dart' as ansi;
 import '../ui/render.dart' as render;
+import '../session/session_ops.dart';
 import '../ui/menu.dart';
 import '../workspace/workspace_config.dart';
 
@@ -61,6 +62,8 @@ Future<void> runSuggest({
       print('Aborted.');
       exit_(0);
     }
+    // Overwriting a completed handoff — preserve it first.
+    archiveCurrentHandoff(workspace: workspace, io: fileIO);
   }
 
   // ── Parse handoff ──────────────────────────────────────────────────────────
