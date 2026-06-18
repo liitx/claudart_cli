@@ -4,6 +4,7 @@ import 'package:claudart/pipeline/debug_mode.dart';
 import 'package:claudart/version.dart';
 import 'package:claudart/registry.dart';
 import 'package:claudart/commands/archives.dart';
+import 'package:claudart/commands/chat_shell.dart';
 import 'package:claudart/commands/experiment.dart';
 import 'package:claudart/commands/init.dart';
 import 'package:claudart/commands/kill.dart';
@@ -31,6 +32,7 @@ Usage:
   claudart <command> [arguments]
 
 Commands:
+  chat                   Open the interactive chat shell: greeting, then dispatch to flow/suggest
   archives               List session archives for the current project; resume or view snapshots
   init                   Initialize the workspace with generic starter knowledge
   init --project <name>  Add a project knowledge file to the workspace
@@ -93,6 +95,8 @@ Future<void> main(List<String> rawArgs) async {
   final rest = args.skip(1).toList();
 
   switch (command) {
+    case 'chat':
+      await runChatShell();
     case 'archives':
       await runArchives();
     case 'init':

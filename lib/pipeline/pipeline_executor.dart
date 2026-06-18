@@ -60,7 +60,7 @@ class PipelineExecutor {
     UserPrompter?     prompter,
     ApprovalSelector? approvalSelector,
     this.strict = false,
-  })  : _runner           = runner           ?? _defaultClaudeRunner,
+  })  : _runner           = runner           ?? defaultClaudeRunner,
         _prompter         = prompter         ?? _defaultPrompter,
         _approvalSelector = approvalSelector ?? _defaultApprovalSelector;
 
@@ -357,7 +357,7 @@ Future<T?> runWithSpinner<T>({
 
 // ── Default ClaudeRunner ──────────────────────────────────────────────────────
 
-Future<({String text, Usage usage})?> _defaultClaudeRunner({
+Future<({String text, Usage usage})?> defaultClaudeRunner({
   required AgentModel model,
   required String systemPrompt,
   required String message,
