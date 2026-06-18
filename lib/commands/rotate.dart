@@ -10,6 +10,7 @@ import '../registry.dart';
 import '../session/session_state.dart';
 import '../teardown_utils.dart';
 import '../md_io.dart' show confirm;
+import '../ui/render.dart' as render;
 
 enum RotateResult {
   /// Current session archived, next issue seeded into fresh handoff.
@@ -46,9 +47,7 @@ Future<RotateResult>  runRotate({
   final confirm_ = confirmFn ?? confirm;
   final build_ = buildFn ?? _defaultBuild;
 
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART ROTATE');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART ROTATE'));
 
   // 1 — Registry lookup.
   final projectRoot = projectRootOverride ?? detectGitContext()?.root;

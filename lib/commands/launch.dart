@@ -11,6 +11,7 @@ import '../ui/menu.dart';
 import 'kill.dart';
 import 'link.dart';
 import 'setup.dart';
+import '../ui/render.dart' as render;
 
 /// Interactive launcher — runs when `claudart` is invoked with no arguments.
 ///
@@ -27,9 +28,7 @@ Future<void> runLauncher({
   final exit_ = exitFn ?? exit;
   final pick_ = pickFn ?? arrowMenu;
 
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART'));
 
   // ── Phase 1: Registry load ─────────────────────────────────────────────────
 

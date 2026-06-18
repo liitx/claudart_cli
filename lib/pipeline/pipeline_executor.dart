@@ -18,10 +18,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../ui/ansi.dart' as ansi;
+import '../ui/render.dart' as render;
 import 'debug_mode.dart';
 import '../ui/menu.dart';
 import 'agent_model.dart';
+import 'agent_response.dart';
 import 'agent_step.dart';
+import 'event_response_map.dart';
 import 'pipeline_context.dart';
 import 'pipeline_event.dart';
 import 'route_tag.dart';
@@ -254,6 +257,7 @@ class PipelineExecutor {
     required int displayTotal,
   }) async {
     PipelineContext result = ctx;
+    final wsLabel = ctx.projectRoot.split('/').last;
 
     // Mutable spinner state — local to this subscription.
     Timer? spinnerTimer;
@@ -276,12 +280,12 @@ class PipelineExecutor {
       });
     }
 
-    void stopSpinner({required bool success, String? stats}) {
+    // Cancel the animated spinner and clear its line, leaving the cursor at
+    // column 0 so the typed block for this event renders cleanly beneath it.
+    void clearSpinner() {
       spinnerTimer?.cancel();
       spinnerTimer = null;
-      final icon    = success ? '${ansi.green}✓' : '${ansi.red}✗';
-      final statStr = stats != null ? '  ${ansi.dim}$stats${ansi.reset}' : '';
-      stdout.write('\x1B[2K\r  $icon${ansi.reset}  $stepTag  $stepLabel$statStr\n');
+      stdout.write('\x1B[2K\r');
     }
 
     await for (final event in run(
@@ -294,25 +298,21 @@ class PipelineExecutor {
         case AgentStarted(:final label, :final displayStep, :final displayTotal):
           startSpinner(label, displayStep, displayTotal);
 
-        case AgentCompleted(:final usage):
-          stopSpinner(success: true, stats: usage.format());
-
+        case AgentCompleted():
         case AgentFailed():
-          stopSpinner(success: false);
-
-        case AgentEscalating(:final unknownContext):
-          // Stop spinner before prompting; _prompter prints 'Answer: ' itself.
-          stopSpinner(success: true);
-          if (unknownContext != null) {
-            print('\n  ${ansi.dim}  Not in files: $unknownContext${ansi.reset}\n');
-          }
+        case AgentEscalating():
+          // Clear the spinner line, then render the typed colored block.
+          clearSpinner();
+          final response =
+              toResponse(event, speaker: Speaker.subagent, workspace: wsLabel);
+          if (response != null) print('${render.render(response)}\n');
 
         case AgentResumed():
           break; // Next AgentStarted restarts the spinner.
 
         case PlanDraft(:final plan):
-          stopSpinner(success: true);
-          print('\n$plan\n');
+          clearSpinner();
+          print('\n${render.planDraft(plan)}\n');
 
         case AwaitingApproval():
           // _prompter is awaited inside the generator after this event.

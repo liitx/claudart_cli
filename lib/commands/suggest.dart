@@ -9,6 +9,7 @@ import '../pipeline/pipeline_executor.dart';
 import '../pipeline/xml_tags.dart';
 import '../registry.dart';
 import '../ui/ansi.dart' as ansi;
+import '../ui/render.dart' as render;
 import '../ui/menu.dart';
 import '../workspace/workspace_config.dart';
 
@@ -79,7 +80,7 @@ Future<void> runSuggest({
 
   // ── Header ─────────────────────────────────────────────────────────────────
 
-  _printHeader('CLAUDART SUGGEST');
+  print(render.header('CLAUDART SUGGEST'));
   print(
     '  ${ansi.dim}[1] Read files${ansi.reset}'
     '  ${ansi.dim}›${ansi.reset}'
@@ -133,7 +134,7 @@ Future<void> runSuggest({
     print('\n  ${ansi.dim}──────────────────────────────────────${ansi.reset}');
     print('  ${ansi.dim}  Total  ${ctx.usage.format()}${ansi.reset}\n');
 
-    _printHeader('SUGGEST FINDINGS — REVIEW BEFORE SAVE');
+    print(render.header('SUGGEST FINDINGS — REVIEW BEFORE SAVE'));
     _printSection('ROOT CAUSE',     tagOr(analysisOut, 'ROOT_CAUSE'));
     _printSection('SCOPE FILES',    tagOr(analysisOut, 'SCOPE_FILES'));
     _printSection('MUST NOT TOUCH', tagOr(analysisOut, 'MUST_NOT_TOUCH'));
@@ -227,13 +228,6 @@ $mustNotTouch''';
 }
 
 // ── Display helpers ───────────────────────────────────────────────────────────
-
-void _printHeader(String title) {
-  final bar = '═' * (title.length + 4);
-  print('\n${ansi.bold}$bar${ansi.reset}');
-  print('${ansi.bold}  $title${ansi.reset}');
-  print('${ansi.bold}$bar${ansi.reset}\n');
-}
 
 void _printSection(String title, String body) {
   final under = '─' * title.length;

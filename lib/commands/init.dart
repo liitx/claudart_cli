@@ -9,6 +9,7 @@ import '../commands/suggest_template.dart';
 import '../commands/debug_template.dart';
 import '../commands/save_template.dart';
 import '../commands/teardown_template.dart';
+import '../ui/render.dart' as render;
 
 Future<void> runInit(List<String> args) async {
   final parser = ArgParser()
@@ -25,9 +26,7 @@ Future<void> runInit(List<String> args) async {
 }
 
 Future<void> _initWorkspace() async {
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART WORKSPACE INIT');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART WORKSPACE INIT'));
   print('\nWorkspace: $claudeDir');
 
   // Check if already initialized
@@ -76,9 +75,7 @@ Future<void> _initWorkspace() async {
 }
 
 Future<void> _initProject(String name) async {
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART PROJECT INIT: $name');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART PROJECT INIT: $name'));
 
   if (!Directory(genericKnowledgeDir).existsSync()) {
     print('\n✗ Workspace not initialized. Run `claudart init` first.\n');

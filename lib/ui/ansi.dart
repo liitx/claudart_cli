@@ -11,10 +11,13 @@ const String bold   = '\x1b[1m';
 const String dim    = '\x1b[2m';
 
 // ── Foreground colours ─────────────────────────────────────────────────────────
-const String red    = '\x1b[31m';
-const String green  = '\x1b[32m';
-const String yellow = '\x1b[33m';
-const String cyan   = '\x1b[36m';
+const String red     = '\x1b[31m';
+const String green   = '\x1b[32m';
+const String yellow  = '\x1b[33m';
+const String magenta = '\x1b[35m';
+const String cyan    = '\x1b[36m';
+const String white   = '\x1b[37m';
+const String grey    = '\x1b[90m';
 
 // ── Cursor control ─────────────────────────────────────────────────────────────
 const String hideCursor = '\x1b[?25l';

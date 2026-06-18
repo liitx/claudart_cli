@@ -14,6 +14,7 @@ import '../session/archive_entry.dart';
 import '../teardown_utils.dart';
 import '../ui/menu.dart';
 import '../workspace/workspace_index.dart';
+import '../ui/render.dart' as render;
 
 Future<void> runTeardown({
   FileIO? io,
@@ -29,9 +30,7 @@ Future<void> runTeardown({
   final prompt_ = promptFn ?? _defaultPrompt;
   final pick_ = pickFn ?? arrowMenu;
 
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART SESSION TEARDOWN');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART SESSION TEARDOWN'));
 
   final gitCtx = projectRootOverride != null ? null : detectGitContext();
   final projectRoot = projectRootOverride ?? gitCtx?.root;

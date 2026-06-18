@@ -23,6 +23,7 @@ import '../registry.dart';
 import '../util/enum_util.dart';
 import '../ui/ansi.dart' as ansi;
 import '../ui/menu.dart';
+import '../ui/render.dart' as render;
 import '../workspace/workspace_config.dart';
 
 Future<void> runFlow({
@@ -62,7 +63,7 @@ Future<void> runFlow({
   final checkpointFile = File(checkpointPath);
 
   if (checkpointFile.existsSync()) {
-    _printHeader('CLAUDART FLOW  ${ansi.dim}[resume]${ansi.reset}');
+    print(render.header('CLAUDART FLOW  ${ansi.dim}[resume]${ansi.reset}'));
     print('  A saved checkpoint was found from a previous session.\n');
 
     try {
@@ -125,7 +126,7 @@ Future<void> runFlow({
 
   // ── Collect prompt ─────────────────────────────────────────────────────────
 
-  _printHeader('CLAUDART FLOW  ${ansi.dim}[experimental]${ansi.reset}');
+  print(render.header('CLAUDART FLOW  ${ansi.dim}[experimental]${ansi.reset}'));
   print(
     '  Enter your prompt. An agent will classify intent, generate a\n'
     '  dependency-ordered plan, and construct the handoff automatically.\n'
@@ -206,18 +207,17 @@ void _printClassification(PipelineContext ctx) {
     CategorizeTag.complexity.extractFrom(raw),
   );
   if (category == null || intent == null || complexity == null) {
-    print(
-      '  ${ansi.dim}Classified:${ansi.reset}  '
-      '${ansi.dim}(categorize output unparseable — '
-      'plan will fall back to sonnet)${ansi.reset}\n',
-    );
+    print('${render.classification(degraded: true)}\n');
     return;
   }
   final routed = routeModel(category, intent, complexity);
   print(
-    '  ${ansi.dim}Classified:${ansi.reset}  '
-    '${category.name} × ${intent.name} × ${complexity.name}'
-    '  ${ansi.dim}→${ansi.reset}  ${routed.shortName}\n',
+    '${render.classification(
+      category:   category.name,
+      intent:     intent.name,
+      complexity: complexity.name,
+      model:      routed.shortName,
+    )}\n',
   );
 }
 
@@ -323,11 +323,3 @@ void _saveCheckpoint(PipelineContext ctx, String path) {
   File(path).writeAsStringSync(json);
 }
 
-// ── Display ───────────────────────────────────────────────────────────────────
-
-void _printHeader(String title) {
-  final bar = '═' * (title.length + 4);
-  print('\n${ansi.bold}$bar${ansi.reset}');
-  print('${ansi.bold}  $title${ansi.reset}');
-  print('${ansi.bold}$bar${ansi.reset}\n');
-}

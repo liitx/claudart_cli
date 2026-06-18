@@ -6,6 +6,7 @@ import '../scanner/scanner.dart';
 import '../scanner/scan_threshold_exception.dart';
 import '../sensitivity/token_map.dart';
 import '../logging/logger.dart';
+import '../ui/render.dart' as render;
 
 /// Runs an explicit on-demand scan of the project.
 /// [scope] overrides config.scanScope ('lib', 'full', or 'handoff').
@@ -34,9 +35,7 @@ Future<void> runScan({
       full ? 'full' : (scope ?? config.scanScope);
   final projectRoot = config.projectRoot!;
 
-  print('\n═══════════════════════════════════════');
-  print('  SENSITIVITY SCAN');
-  print('═══════════════════════════════════════');
+  print(render.header('SENSITIVITY SCAN'));
   print('Scanning $projectRoot/$effectiveScope...');
 
   final tokenMapPath = workspacePath != null

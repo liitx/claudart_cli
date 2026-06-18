@@ -16,6 +16,7 @@ import '../session/archive_entry.dart';
 import '../ui/ansi.dart' as ansi;
 import '../ui/menu.dart';
 import '../workspace/workspace_index.dart';
+import '../ui/render.dart' as render;
 
 Future<void> runArchives({
   FileIO? io,
@@ -50,9 +51,7 @@ Future<void> runArchives({
 
   // ── Display list ───────────────────────────────────────────────────────────
 
-  print('\n${ansi.bold}═══════════════════════════════════════${ansi.reset}');
-  print('${ansi.bold}  CLAUDART ARCHIVES${ansi.reset}');
-  print('${ansi.bold}═══════════════════════════════════════${ansi.reset}\n');
+  print(render.header('CLAUDART ARCHIVES'));
 
   final labels = entries.map((e) => _formatEntry(e)).toList();
   labels.add('${ansi.dim}Cancel${ansi.reset}');

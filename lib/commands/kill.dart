@@ -8,6 +8,7 @@ import '../registry.dart';
 import '../session/session_ops.dart';
 import '../session/session_state.dart';
 import '../session/workspace_guard.dart';
+import '../ui/render.dart' as render;
 
 /// Abandons the active session for the current project.
 ///
@@ -25,9 +26,7 @@ Future<void> runKill({
   final exit_ = exitFn ?? exit;
   final sw = Stopwatch()..start();
 
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART SESSION KILL');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART SESSION KILL'));
 
   // 1 — Detect project root.
   final projectRoot = projectRootOverride ?? detectGitContext()?.root;
