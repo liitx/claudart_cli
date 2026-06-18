@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import '../file_io.dart';
 import '../paths.dart';
 import '../process_runner.dart';
+import '../ui/render.dart' as render;
 
 const _ghRepo = 'liitx/claudart';
 const _issueLabelBase = 'claudart-generated';
@@ -28,9 +29,7 @@ Future<void> runReport({
   final interactions = _readJsonl(fileIO, interactionsPath);
   final errors = _readJsonl(fileIO, errorsPath);
 
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART DIAGNOSTIC REPORT');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART DIAGNOSTIC REPORT'));
   print('Interactions logged : ${interactions.length}');
   print('Error entries       : ${errors.length}');
 

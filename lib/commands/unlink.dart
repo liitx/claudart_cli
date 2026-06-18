@@ -1,10 +1,9 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import '../ui/render.dart' as render;
 
 void runUnlink() {
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART UNLINK');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART UNLINK'));
 
   final cwd = Directory.current.path;
   var removed = 0;

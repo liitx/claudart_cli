@@ -10,6 +10,7 @@ import '../pipeline/pipeline_executor.dart';
 import '../pipeline/xml_tags.dart';
 import '../registry.dart';
 import '../ui/ansi.dart' as ansi;
+import '../ui/render.dart' as render;
 import '../ui/menu.dart';
 import '../workspace/workspace_config.dart';
 
@@ -81,7 +82,7 @@ Future<void> runDebug({
 
   // ── Header ──────────────────────────────────────────────────────────────────
 
-  _printHeader('CLAUDART DEBUG');
+  print(render.header('CLAUDART DEBUG'));
   print(
     '  ${ansi.dim}[1] Read files${ansi.reset}'
     '  ${ansi.dim}›${ansi.reset}'
@@ -141,7 +142,7 @@ Future<void> runDebug({
   print('\n  ${ansi.dim}──────────────────────────────────────${ansi.reset}');
   print('  ${ansi.dim}  Total  ${ctx.usage.format()}${ansi.reset}\n');
 
-  _printHeader('DEBUG PLAN — REVIEW BEFORE WRITE');
+  print(render.header('DEBUG PLAN — REVIEW BEFORE WRITE'));
   _printSection('CHANGES', changes);
 
   print('  ${ansi.bold}FILES TO WRITE${ansi.reset}');
@@ -206,13 +207,6 @@ List<_EditFile> _parseEditFiles(String text) {
 }
 
 // ── Display helpers ────────────────────────────────────────────────────────────
-
-void _printHeader(String title) {
-  final bar = '═' * (title.length + 4);
-  print('\n${ansi.bold}$bar${ansi.reset}');
-  print('${ansi.bold}  $title${ansi.reset}');
-  print('${ansi.bold}$bar${ansi.reset}\n');
-}
 
 void _printSection(String title, String body) {
   final under = '─' * title.length;

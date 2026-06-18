@@ -6,6 +6,7 @@ import '../registry.dart';
 import '../session/session_state.dart';
 import '../teardown_utils.dart';
 import '../ui/ansi.dart' as ansi;
+import '../ui/render.dart' as render;
 
 Future<void> runStatus({
   FileIO? io,
@@ -62,9 +63,7 @@ Future<void> runStatus({
       readSubSection(extractSection(content, 'Debug Progress'),
           'What is still unresolved');
 
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART SESSION STATUS');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART SESSION STATUS'));
   print('Project  : ${entry.name}');
   print('Branch   : ${currentBranch ?? state.branch}');
   print('Status   : ${state.status.value}');

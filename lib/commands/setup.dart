@@ -14,6 +14,7 @@ import '../session/session_state.dart' show SessionState, HandoffStatus;
 import '../ui/ansi.dart' as ansi;
 import '../ui/menu.dart';
 import 'scan.dart';
+import '../ui/render.dart' as render;
 
 /// Returns absolute paths of files named [basename] under [projectRoot].
 /// Injectable for tests — default uses the OS `find` command.
@@ -35,9 +36,7 @@ Future<void> runSetup({
   final pick_ = pickFn ?? arrowMenu;
   final finder_ = fileFinderFn ?? _defaultFileFinder;
 
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART SESSION SETUP');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART SESSION SETUP'));
 
   // Resolve project root.
   final gitCtx = projectRootOverride != null ? null : detectGitContext();

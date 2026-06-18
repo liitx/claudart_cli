@@ -10,6 +10,7 @@ import '../sensitivity/token_map.dart';
 import '../handoff_template.dart' show stampHandoffUpdated;
 import '../session/session_state.dart';
 import '../teardown_utils.dart';
+import '../ui/render.dart' as render;
 
 /// Result of the skills.md pending update — used in reports and tests.
 enum SkillsUpdateResult { written, skipped }
@@ -28,9 +29,7 @@ Future<SkillsUpdateResult> runSave({
   final exit_ = exitFn ?? exit;
   final sw = Stopwatch()..start();
 
-  print('\n═══════════════════════════════════════');
-  print('  CLAUDART SAVE');
-  print('═══════════════════════════════════════');
+  print(render.header('CLAUDART SAVE'));
 
   // 1 — Registry lookup.
   final projectRoot = projectRootOverride ?? detectGitContext()?.root;
