@@ -199,7 +199,10 @@ String? Function(String, {bool optional}) _prompts(List<String?> queue) {
 }
 
 /// Builds a pickFn that always selects [cat] from the category menu.
-int Function(List<String>) _pick(TeardownCategory cat) => (_) => cat.index;
+/// Matches the injectable `pickFn` signature on teardown (the menu gained an
+/// optional `startIndex` for preselection); the stub ignores it.
+int Function(List<String>, {int startIndex}) _pick(TeardownCategory cat) =>
+    (_, {int startIndex = 0}) => cat.index;
 
 // Category selection uses TeardownCategory constants (mirrors menu indices).
 

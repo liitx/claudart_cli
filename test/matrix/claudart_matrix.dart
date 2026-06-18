@@ -18,7 +18,11 @@ final claudartMatrix = Dartrix(
 );
 
 void assertNoGaps() {
-  test('matrix: no coverage gaps', () {
+  // Asserted in tearDownAll so it runs after every test has registered its
+  // coverage, regardless of execution order. `make test` randomizes order
+  // (--test-randomize-ordering-seed=random); a plain test() here would run at
+  // a random position and see a half-populated matrix.
+  tearDownAll(() {
     final gaps = claudartMatrix.gaps();
     if (gaps.isEmpty) return;
     final lines = gaps.map((g) => '  ${g.variant.description} × ${g.feature.description}');

@@ -255,7 +255,11 @@ void main() {
         final text = callCount == 1 ? planXml : constructXml;
         return (text: text, usage: const Usage(input: 100, output: 50, cost: 0.001, cacheRead: 0));
       }
-      final exec = PipelineExecutor(runner: twoStepRunner, prompter: (_) async => 'y');
+      final exec = PipelineExecutor(
+        runner:           twoStepRunner,
+        prompter:         (_) async => 'y',
+        approvalSelector: (_) async => 0, // approve — inject so the gate needs no TTY
+      );
       final ctx  = await exec.runFuture(
         steps:        [FlowSteps.plan, FlowSteps.construct],
         ctx:          _baseCtx().withSlot('categorize', '<CATEGORY>feature</CATEGORY>'),
