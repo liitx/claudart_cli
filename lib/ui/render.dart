@@ -185,7 +185,7 @@ String notInFiles(String context) =>
 enum StatusBadge {
   ok('✓', ansi.green),
   fail('✗', ansi.red),
-  warn('⚠', ansi.yellow),
+  warn('⚠️', ansi.yellow),
   info('·', ansi.cyan);
 
   const StatusBadge(this.icon, this.colorCode);

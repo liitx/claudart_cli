@@ -31,7 +31,19 @@ const String clearLine = '\r\x1b[K';
 
 // ── Helper ─────────────────────────────────────────────────────────────────────
 
-/// Wraps [text] with [code] + [reset]. Returns [text] unchanged when stdout
-/// is not a TTY so output piped to a file stays clean.
-String c(String code, String text) =>
-    stdout.hasTerminal ? '$code$text$reset' : text;
+/// Whether colour codes should be emitted. `NO_COLOR` forces off,
+/// `FORCE_COLOR` / `CLAUDART_FORCE_COLOR` force on (e.g. for panels that read
+/// ANSI but aren't a TTY); otherwise follow the terminal.
+bool get colorEnabled {
+  final env = Platform.environment;
+  if (env.containsKey('NO_COLOR')) return false;
+  if (env.containsKey('FORCE_COLOR') ||
+      env.containsKey('CLAUDART_FORCE_COLOR')) {
+    return true;
+  }
+  return stdout.hasTerminal;
+}
+
+/// Wraps [text] with [code] + [reset] when [colorEnabled]; returns [text]
+/// unchanged otherwise so piped output and `NO_COLOR` consumers stay clean.
+String c(String code, String text) => colorEnabled ? '$code$text$reset' : text;
