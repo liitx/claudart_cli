@@ -16,6 +16,7 @@ export 'pipeline/flows/flow_steps.dart';
 export 'pipeline/pipeline_context.dart';
 export 'pipeline/pipeline_slot.dart';
 export 'pipeline/pipeline_executor.dart';
+export 'pipeline/claude_session.dart' show newClaudeSessionId;
 export 'pipeline/claudart_surface.dart';
 export 'pipeline/step_route.dart';
 export 'pipeline/usage.dart';

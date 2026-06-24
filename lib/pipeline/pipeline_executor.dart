@@ -24,6 +24,7 @@ import '../ui/menu.dart';
 import 'agent_model.dart';
 import 'agent_response.dart';
 import 'agent_step.dart';
+import 'claude_session.dart';
 import 'event_response_map.dart';
 import 'pipeline_context.dart';
 import 'pipeline_event.dart';
@@ -376,6 +377,10 @@ Future<({String text, Usage usage})?> defaultClaudeRunner({
   );
 
   try {
+    // Isolate by SESSION, not config: a unique --session-id gives this run its own
+    // conversation, distinct from the user's interactive Claude Code session, while
+    // keeping the live shared ~/.claude auth (config-dir isolation 401s — the OAuth
+    // token rotates and a copied credential goes stale).
     final process = await Process.start(
       'claude',
       [
@@ -383,6 +388,7 @@ Future<({String text, Usage usage})?> defaultClaudeRunner({
         '--verbose',
         '--output-format',            'stream-json',
         '--include-partial-messages',
+        '--session-id',    newClaudeSessionId(),
         '--model',         model.alias,
         '--system-prompt', systemPrompt,
         '--dangerously-skip-permissions',
